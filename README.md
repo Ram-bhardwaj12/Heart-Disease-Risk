@@ -73,9 +73,10 @@ The project utilizes the widely studied **Kaggle Heart Disease Dataset** (derive
 * **Leakage Prevention:** To avoid synthetic performance inflation and severe data leakage between training and testing sets, **all duplicate records are purged strictly BEFORE the train/test split**.
 * **Audit & Verification:** The exact count of unique instances will be verified systematically in code during Phase 1 and recorded directly into the project's Results section.
 * **Encoding verification:** The value codes in the feature dictionary (for example thal, slope, cp and the direction of target) will be verified against the actual file in Phase 1 and corrected here if they differ.
-* Label direction: the audit showed target = 1 groups have higher thalach, lower oldpeak, lower exercise angina and ca = 0 more often, which is the clinical pattern of healthy patients. The project therefore uses disease = 1 - target. A sanity check after training verifies this.
+* Label direction: the audit showed target = 1 groups have higher thalach, lower oldpeak, lower exercise angina and ca = 0 more often, which is the clinical pattern of healthy patients. The project therefore uses disease = 1 - target. Sanity check after training passed: for disease = 1, logistic regression coefficients are negative for thalach and positive for oldpeak and exang.
 * Invalid codes: ca = 4 and thal = 0 are converted to missing values and imputed with the most frequent training value.
 * Small test set: with 302 unique patients the test split has about 61 rows, so test metrics are noisy and are reported together with cross-validation results.
+* Rare category: restecg = 2 occurs in 4 patients in total, all of which fall in the training split.
 
 ---
 
@@ -370,7 +371,7 @@ Open your web browser and navigate to `http://localhost:8501`.
 - [ ] **Phase 2:** Exploratory data analysis & statistical correlation reporting
 - [x] **Phase 3:** Feature encoding, scaling, and stratified train/test split
 - [x] **Phase 4:** Baseline Logistic Regression & tuned Random Forest training
-- [ ] **Phase 5:** Model evaluation with recall, ROC-AUC, and confusion matrix benchmarking
+- [x] **Phase 5:** Model evaluation with recall, ROC-AUC, and confusion matrix benchmarking
 - [ ] **Phase 6:** Global and local SHAP explainability visualizations
 - [ ] **Phase 7:** Streamlit interactive dashboard development and validation
 - [ ] **Phase 8:** Streamlit Community Cloud production deployment & documentation
@@ -389,14 +390,29 @@ Open your web browser and navigate to `http://localhost:8501`.
 
 ### Model Performance Comparison
 
-| Model | Accuracy | Precision | Recall (Sensitivity) | F1-Score | ROC-AUC |
+#### Table 1: Cross-validation on training set (5-fold, mean ± std)
+
+| Model | ROC-AUC | Recall | Precision | F1 | Accuracy |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Logistic Regression (Baseline)** | `[Pending]` | `[Pending]` | `[Pending]` | `[Pending]` | `[Pending]` |
-| **Random Forest (Tuned Candidate)** | `[Pending]` | `[Pending]` | `[Pending]` | `[Pending]` | `[Pending]` |
+| **Logistic Regression (Baseline)** | 0.9146 ± 0.0291 | 0.7909 ± 0.0680 | 0.9160 ± 0.0829 | 0.8446 ± 0.0466 | 0.8669 ± 0.0413 |
+| **Random Forest (Tuned Candidate)** | 0.9212 ± 0.0253 | 0.7909 ± 0.0979 | 0.8724 ± 0.0712 | 0.8226 ± 0.0491 | 0.8462 ± 0.0393 |
+
+#### Table 2: Held-out test set (n = 61, threshold 0.5)
+
+| Model | Accuracy [95% CI] | Precision [95% CI] | Recall [95% CI] | F1 [95% CI] | ROC-AUC [95% CI] | Brier Score |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Logistic Regression (Baseline)** | 0.8361 [0.7377, 0.9180] | 0.8750 [0.7273, 1.0000] | 0.7500 [0.5861, 0.9000] | 0.8077 [0.6789, 0.9123] | 0.9091 [0.8319, 0.9729] | 0.1217 |
+| **Random Forest (Tuned Candidate)** | 0.8033 [0.7049, 0.9016] | 0.8077 [0.6538, 0.9501] | 0.7500 [0.5861, 0.9000] | 0.7778 [0.6500, 0.8852] | 0.9026 [0.8200, 0.9662] | 0.1372 |
+
+**Operating point:** A recall-oriented decision threshold of 0.30 was selected based exclusively on training set out-of-fold cross-validation predictions (the highest threshold maintaining out-of-fold recall ≥ 0.90). As a secondary test result, applying threshold 0.30 to the test set yielded:
+* **Logistic Regression:** Recall = 0.8929 (25/28), Precision = 0.7353, Accuracy = 0.8033, F1 = 0.8065 (TN=24, FP=9, FN=3, TP=25).
+* **Random Forest:** Recall = 0.9643 (27/28), Precision = 0.6750, Accuracy = 0.7705, F1 = 0.7941 (TN=20, FP=13, FN=1, TP=27).
+
+**Model comparison note:** The bootstrap paired difference between Random Forest and Logistic Regression (RF minus LR) on the held-out test set shows a mean difference in ROC-AUC of -0.0068 (95% CI: [-0.0379, +0.0249]) and a mean difference in Recall of +0.0000 (95% CI: [+0.0000, +0.0000]). Because both 95% confidence intervals include zero, the data does not show a clear difference between the two models. Random Forest is used as the project's main model by design, and Logistic Regression is the baseline.
 
 ### Evaluation Artifacts
-* `[Placeholder: Test Set Confusion Matrix Plot]`
-* `[Placeholder: ROC Curve Comparison Chart]`
+![Test Set Confusion Matrix](reports/figures/confusion_matrix.png)
+![ROC Curve Comparison](reports/figures/roc_curve.png)
 * `[Placeholder: Global SHAP Summary Beeswarm Plot]`
 * `[Placeholder: Exemplar Patient Local SHAP Waterfall Plot]`
 
@@ -407,6 +423,7 @@ Open your web browser and navigate to `http://localhost:8501`.
 1. **Small Unique Sample Size:** After purging duplicate patient records, the dataset comprises only approximately 300 unique individuals, limiting statistical power and high-dimensional generalization.
 2. **Single-Source Regional Bias:** Data collection originates from historical clinical cohorts that do not adequately reflect modern heterogeneous demographic, socioeconomic, or regional populations.
 3. **Absence of Clinical Validation:** Predictions are produced solely as an academic machine learning benchmark and have not been validated in a prospective clinical trial.
+4. Value codes for cp, slope and thal are not verified against official documentation, so the project reports raw codes and makes no clinical interpretation of individual codes.
 
 ---
 
