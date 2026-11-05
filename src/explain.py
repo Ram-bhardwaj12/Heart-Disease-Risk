@@ -231,7 +231,10 @@ def run_explainability() -> None:
     ]
     grouped_patient_abs = {}
     for f in orig_13_features:
-        matching_cols = [col for col in feature_names if col.startswith(f"num__{f}") or col.startswith(f"bin__{f}") or col.startswith(f"nom__{f}_")]
+        matching_cols = [
+            col for col in feature_names
+            if col in [f"num__{f}", f"bin__{f}"] or col.startswith(f"nom__{f}_")
+        ]
         col_indices = [feature_names.index(c) for c in matching_cols]
         grouped_patient_abs[f] = np.sum(np.abs(shap_values_class1[:, col_indices]), axis=1)
 
@@ -480,3 +483,4 @@ def run_explainability() -> None:
 
 if __name__ == "__main__":
     run_explainability()
+

@@ -14,7 +14,7 @@
   },
   "additivity_check": {
     "formula": "base_value + sum(shap_values) == predict_proba[:, 1]",
-    "max_absolute_error": 1.3322676295501878e-15,
+    "max_absolute_error": 1.4432899320127035e-15,
     "threshold": 0.0001,
     "passed": true
   },
@@ -156,7 +156,7 @@
       {
         "rank": 1,
         "feature": "thal",
-        "mean_abs_shap": 0.13758
+        "mean_abs_shap": 0.107299
       },
       {
         "rank": 2,

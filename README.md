@@ -154,10 +154,10 @@ The project executes through eight sequential, modular phases:
 ## 💻 Web Application Features
 
 * **Interactive Clinical Parameter Sidebar:** Responsive entry fields for all 13 clinical variables with strict input boundary validations and plain-English tooltips.
-* **Stratified Risk Indicator:** Outputs real-time predicted probability categorized into intuitive risk tiers:
-  * 🟢 **Low Risk:** $< 35\%$
-  * 🟡 **Moderate Risk:** $35\% - 65\%$
-  * 🔴 **High Risk:** $> 65\%$
+* **Stratified Risk Indicator:** Outputs real-time model score categorized into intuitive risk tiers (the number is a model score whose calibration was not checked):
+  * 🟢 **Low Risk:** $< 0.30$ (the screening threshold chosen on training data)
+  * 🟡 **Moderate Risk:** $0.30 - 0.50$
+  * 🔴 **High Risk:** $\ge 0.50$
 * **Patient-Specific SHAP Waterfall Plot:** Granular visualization highlighting factors pushing predicted risk upward (red) or downward (blue) relative to baseline prevalence.
 * **Global Model Insights & Metrics:** Dedicated view displaying model architecture, cross-validation metrics, confusion matrices, and global feature importance.
 * **Dataset & Methodology Overview:** Clear documentation on clinical features, cleaning procedures, and performance benchmarks.
@@ -178,7 +178,8 @@ heart-disease-prediction/
 ├── app/                     # Multi-page Streamlit web application source code
 ├── reports/                 # Generated evaluation metrics, figures, and presentation artifacts
 │   └── figures/             # Exported PNG plots (ROC curves, confusion matrices, SHAP charts)
-├── requirements.txt         # Pinned project dependencies and environment specification
+├── requirements.txt         # Minimal pinned dependencies for production Streamlit deployment
+├── requirements-dev.txt     # Development and research dependencies (EDA, Jupyter, visualization)
 └── README.md                # Comprehensive project documentation and execution guide
 ```
 
@@ -352,10 +353,15 @@ cd heart-disease-prediction
   ```
 
 ### 3. Install Dependencies
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
+* **To run the Streamlit application:**
+  ```bash
+  pip install --upgrade pip
+  pip install -r requirements.txt
+  ```
+* **To work on Jupyter notebooks and research:**
+  ```bash
+  pip install -r requirements-dev.txt
+  ```
 
 ### 4. Launch the Streamlit Application
 ```bash
@@ -373,7 +379,7 @@ Open your web browser and navigate to `http://localhost:8501`.
 - [x] **Phase 4:** Baseline Logistic Regression & tuned Random Forest training
 - [x] **Phase 5:** Model evaluation with recall, ROC-AUC, and confusion matrix benchmarking
 - [x] **Phase 6:** Global and local SHAP explainability visualizations
-- [ ] **Phase 7:** Streamlit interactive dashboard development and validation
+- [x] **Phase 7:** Streamlit interactive dashboard development and validation
 - [ ] **Phase 8:** Streamlit Community Cloud production deployment & documentation
 
 ---
@@ -413,7 +419,7 @@ Open your web browser and navigate to `http://localhost:8501`.
 ### Explainability Findings
 
 * **Top 5 Grouped Features (Mean |SHAP|):**
-  1. `thal`: 0.137580
+  1. `thal`: 0.107299
   2. `cp`: 0.079776
   3. `ca`: 0.078887
   4. `exang`: 0.041587

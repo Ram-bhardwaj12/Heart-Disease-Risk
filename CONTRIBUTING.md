@@ -104,8 +104,8 @@ To run and verify the project on your machine:
 .\venv\Scripts\activate      # Windows
 source venv/bin/activate       # Linux/macOS
 
-# 2. Ensure all dependencies are installed
-pip install -r requirements.txt
+# 2. Ensure all development and notebook dependencies are installed
+pip install -r requirements-dev.txt
 
 # 3. Launch the Streamlit application
 streamlit run app/app.py
