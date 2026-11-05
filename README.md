@@ -371,6 +371,21 @@ Open your web browser and navigate to `http://localhost:8501`.
 
 ---
 
+## 🌐 Deployment
+
+Steps to deploy the web application to Streamlit Community Cloud:
+1. Push all committed changes to GitHub on branch `main`.
+2. Sign in to [Streamlit Community Cloud](https://share.streamlit.io/) with your GitHub account.
+3. Click **New app** and select your repository.
+4. Set **Branch** to `main` and **Main file path** to `app/app.py`.
+5. Under **Advanced settings**, set the **Python version** to `3.11`.
+6. Click **Deploy!** (`requirements.txt` will be installed automatically).
+7. Perform smoke testing: open each page, click all three exemplar patient buttons, modify inputs, and verify display on a mobile phone.
+
+Live app URL: [to be added after deployment]
+
+---
+
 ## 📋 Project Execution Checklist
 
 - [x] **Phase 1:** Data loading, schema validation, and deduplication audit

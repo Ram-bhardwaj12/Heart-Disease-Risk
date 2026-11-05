@@ -73,3 +73,4 @@ if fig_summary_path.exists():
         caption="SHAP Summary Beeswarm: Color represents feature value (red = high, blue = low); position indicates positive or negative risk attribution.",
         use_container_width=True,
     )
+

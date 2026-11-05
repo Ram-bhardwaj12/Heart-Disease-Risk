@@ -113,19 +113,22 @@ with col_op1:
     cm_lr_s = sec_lr["secondary_test_result"]["confusion_matrix"]
     st.markdown(
         f"**Logistic Regression (Threshold = {thresh_val:.2f}):**\n"
-        f"* Recall (Sensitivity): **{sec_lr['secondary_test_result']['recall']:.4f}** (25/28 cases detected)\n"
-        f"* Precision: **{sec_lr['secondary_test_result']['precision']:.4f}** | Accuracy: **{sec_lr['secondary_test_result']['accuracy']:.4f}**\n"
-        f"* Counts: TN={cm_lr_s['tn']}, FP={cm_lr_s['fp']}, FN={cm_lr_s['fn']}, TP={cm_lr_s['tp']}"
+        f"* Confusion Matrix Counts: **TN = {cm_lr_s['tn']}**, **FP = {cm_lr_s['fp']}**, **FN = {cm_lr_s['fn']}**, **TP = {cm_lr_s['tp']}**\n"
+        f"* Recall: **{sec_lr['secondary_test_result']['recall']:.4f}** | Precision: **{sec_lr['secondary_test_result']['precision']:.4f}** | Accuracy: **{sec_lr['secondary_test_result']['accuracy']:.4f}**"
     )
 
 with col_op2:
     cm_rf_s = sec_rf["secondary_test_result"]["confusion_matrix"]
     st.markdown(
         f"**Random Forest (Threshold = {thresh_val:.2f}):**\n"
-        f"* Recall (Sensitivity): **{sec_rf['secondary_test_result']['recall']:.4f}** (27/28 cases detected, 1 FN)\n"
-        f"* Precision: **{sec_rf['secondary_test_result']['precision']:.4f}** | Accuracy: **{sec_rf['secondary_test_result']['accuracy']:.4f}**\n"
-        f"* Counts: TN={cm_rf_s['tn']}, FP={cm_rf_s['fp']}, FN={cm_rf_s['fn']}, TP={cm_rf_s['tp']}"
+        f"* Confusion Matrix Counts: **TN = {cm_rf_s['tn']}**, **FP = {cm_rf_s['fp']}**, **FN = {cm_rf_s['fn']}**, **TP = {cm_rf_s['tp']}**\n"
+        f"* Recall: **{sec_rf['secondary_test_result']['recall']:.4f}** | Precision: **{sec_rf['secondary_test_result']['precision']:.4f}** | Accuracy: **{sec_rf['secondary_test_result']['accuracy']:.4f}**"
     )
+
+st.markdown(
+    f"At the {thresh_val:.2f} operating-point threshold, Logistic Regression yielded {cm_lr_s['fn']} false negatives (25/28 cases detected) "
+    f"and Random Forest yielded {cm_rf_s['fn']} false negative (27/28 cases detected) on the held-out test cohort."
+)
 
 # Statistical Comparison Note
 st.subheader("4. Statistical Comparison (Paired Bootstrap)")
@@ -165,3 +168,4 @@ with col_fig2:
     if roc_fig_path.exists():
         img_roc = Image.open(roc_fig_path)
         st.image(img_roc, caption="Receiver Operating Characteristic (ROC) Comparison", use_container_width=True)
+

@@ -214,7 +214,7 @@ def get_recall_threshold() -> float:
 
 
 def risk_tier(score: float) -> tuple[str, str, str]:
-    """Classify model probability score into standardized risk tier.
+    """Classify model score into standardized risk tier.
 
     Returns: (tier_name, badge_text, color_hex)
     """
@@ -229,7 +229,7 @@ def risk_tier(score: float) -> tuple[str, str, str]:
 
 
 def predict_score(inputs: Any) -> float:
-    """Predict heart disease probability for input dictionary or DataFrame/Series."""
+    """Predict heart disease model score for input dictionary or DataFrame/Series."""
     if isinstance(inputs, pd.DataFrame):
         inputs = inputs.iloc[0].to_dict()
     elif isinstance(inputs, pd.Series):

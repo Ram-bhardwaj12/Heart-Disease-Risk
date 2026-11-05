@@ -72,7 +72,7 @@ st.subheader("4. Predictive Modeling Framework")
 st.markdown(
     "* **Baseline Model:** L2-regularized Logistic Regression ($C = 0.1$) optimized across 5-fold cross-validation.\n"
     "* **Candidate Primary Model:** Random Forest Classifier (`n_estimators = 400`, `max_depth = 3`, `min_samples_leaf = 5`, `max_features = 'sqrt'`).\n"
-    "* **Explainability Engine:** TreeSHAP (game-theoretic feature attribution) providing mathematical additivity on model probabilities."
+    "* **Explainability Engine:** TreeSHAP (game-theoretic feature attribution) providing mathematical additivity on the model score."
 )
 
 # Section 5: Clinical Limitations
@@ -89,8 +89,6 @@ st.markdown(
 # Section 6: Academic Disclaimer
 st.subheader("6. Academic Disclaimer")
 st.markdown(
-    "*This software and associated documentation are developed exclusively for academic and educational evaluation "
-    "in partial fulfillment of the B.Tech CSE (Machine Learning and Data Science) curriculum at Amity University Madhya Pradesh. "
-    "It is not an FDA-approved medical diagnostic device and must not be used to direct or determine patient diagnosis, "
-    "medical management, or clinical interventions.*"
+    "Educational project, not a medical diagnosis. Do not use this tool to make health decisions."
 )
+

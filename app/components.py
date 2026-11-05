@@ -6,8 +6,7 @@ import streamlit as st
 def render_disclaimer_banner() -> None:
     """Render prominent academic medical disclaimer banner."""
     st.warning(
-        "⚠️ **Disclaimer:** Educational project, not a medical diagnosis. "
-        "Do not use this tool to make health decisions.",
+        "Educational project, not a medical diagnosis. Do not use this tool to make health decisions.",
         icon=None,
     )
 
@@ -42,5 +41,6 @@ def render_how_to_read_caption() -> None:
         "ℹ️ **How to read this plot:** The base value (E[f(x)]) represents the average disease "
         "risk across the training cohort. Red bars indicate patient attributes pushing predicted risk "
         "upward, while blue bars represent attributes pulling predicted risk downward. "
+        "Contributions are in units of the model score (0 to 1 scale): each bar shows how much that input moved the score up or down. "
         "SHAP values reflect statistical contributions to this model's score, not biological causes."
     )
