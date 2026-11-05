@@ -363,7 +363,7 @@ Open your web browser and navigate to `http://localhost:8501`.
 
 ## 📋 Project Execution Checklist
 
-- [ ] **Phase 1:** Data loading, schema validation, and deduplication audit
+- [x] **Phase 1:** Data loading, schema validation, and deduplication audit
 - [ ] **Phase 2:** Exploratory data analysis & statistical correlation reporting
 - [ ] **Phase 3:** Feature encoding, scaling, and stratified train/test split
 - [ ] **Phase 4:** Baseline Logistic Regression & tuned Random Forest training
@@ -380,9 +380,9 @@ Open your web browser and navigate to `http://localhost:8501`.
 
 ### Data Audit Summary
 * Raw record count: `1025`
-* Duplicate rows detected: `[To be recorded after Phase 1 deduplication]`
-* Verified unique patient records: `[To be recorded after Phase 1 deduplication]`
-* Class balance in unique dataset: `[To be populated: % positive vs % negative]`
+* Duplicate rows detected: `723` (70.54%)
+* Verified unique patient records: `302` (29.46%)
+* Class balance in unique dataset: `54.30% positive (target=1, n=164) vs 45.70% negative (target=0, n=138)`
 
 ### Model Performance Comparison
 

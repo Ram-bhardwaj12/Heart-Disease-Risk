@@ -18,3 +18,4 @@ Before requesting review, ensure all the following checks are complete:
 - [ ] No unrelated files or temporary assets were modified or staged.
 - [ ] All Jupyter notebooks have been cleared of cell outputs before committing.
 - [ ] `requirements.txt` has been updated (if new dependencies were introduced).
+
