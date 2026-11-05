@@ -189,26 +189,26 @@ gantt
     title       Early Heart Disease Prediction Project Schedule
 
     section Planning
-    A - README and project setup                  :crit, active, a1, 2026-11-03, 3d
+    A - README and project setup                  :crit, active, 2026-11-03, 3d
 
     section Data
-    B - Data cleaning and deduplication          :crit, b1, 2026-11-05, 1d
-    C - EDA                                      :crit, c1, 2026-11-06, 1d
-    D - Preprocessing and train/test split       :crit, d1, 2026-11-06, 1d
+    B - Data cleaning and deduplication          :crit, 2026-11-05, 1d
+    C - EDA                                      :crit, 2026-11-06, 1d
+    D - Preprocessing and train/test split       :crit, 2026-11-06, 1d
 
     section Modeling
-    E - Baseline and Random Forest training with tuning :crit, e1, 2026-11-07, 2d
-    F - Model evaluation                         :crit, f1, 2026-11-08, 2d
-    G - SHAP explainability analysis             :crit, g1, 2026-11-09, 2d
+    E - Baseline and Random Forest training with tuning :crit, 2026-11-07, 2d
+    F - Model evaluation                         :crit, 2026-11-08, 2d
+    G - SHAP explainability analysis             :crit, 2026-11-09, 2d
 
     section Application
-    H - Streamlit app development                :crit, h1, 2026-11-11, 2d
-    I - Deployment on Streamlit Community Cloud  :crit, i1, 2026-11-13, 1d
+    H - Streamlit app development                :crit, 2026-11-11, 2d
+    I - Deployment on Streamlit Community Cloud  :crit, 2026-11-13, 1d
 
     section Finalization
-    J - Testing and bug fixes                    :crit, j1, 2026-11-13, 2d
-    K - Report and PPT                           :k1, 2026-11-11, 5d
-    L - Buffer day                               :crit, milestone, l1, 2026-11-16, 0d
+    J - Testing and bug fixes                    :crit, 2026-11-13, 2d
+    K - Report and PPT                           :2026-11-11, 5d
+    L - Buffer day                               :crit, milestone, 2026-11-16, 0d
 ```
 
 ---
@@ -277,8 +277,8 @@ flowchart LR
 ```
 
 > **Diagram Legend:**  
-> 🔴 **Solid red nodes and arrows:** Critical path ($\text{slack} = 0$).  
-> ⚪ **Grey node with dashed arrows:** Non-critical task ($\text{slack} > 0$).
+> * 🔴 **Solid red nodes and arrows:** Critical path (slack = 0)  
+> * ⚪ **Grey node with dashed arrows:** non-critical task (slack > 0)
 
 ---
 
