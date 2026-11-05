@@ -103,9 +103,9 @@ sec_lr = eval_summary["recall_oriented_operating_point"]["chosen_threshold"]["lo
 thresh_val = sec_rf["threshold"]
 
 st.markdown(
-    f"To prioritize sensitivity in clinical screening, a decision threshold of **{thresh_val:.2f}** was selected "
-    f"based exclusively on out-of-fold training set cross-validation (the highest threshold achieving $\ge 90\%$ recall). "
-    f"When applied to the held-out test cohort as a **secondary result**:"
+    rf"To prioritize sensitivity in clinical screening, a decision threshold of **{thresh_val:.2f}** was selected "
+    rf"based exclusively on out-of-fold training set cross-validation (the highest threshold achieving $\ge 90\%$ recall). "
+    rf"When applied to the held-out test cohort as a **secondary result**:"
 )
 
 col_op1, col_op2 = st.columns(2)
@@ -163,9 +163,13 @@ with col_fig1:
     if cm_fig_path.exists():
         img_cm = Image.open(cm_fig_path)
         st.image(img_cm, caption="Confusion Matrix Heatmaps at Default Threshold (0.50)", use_container_width=True)
+    else:
+        st.warning(f"Diagnostic figure not found: {cm_fig_path.name}")
 
 with col_fig2:
     if roc_fig_path.exists():
         img_roc = Image.open(roc_fig_path)
         st.image(img_roc, caption="Receiver Operating Characteristic (ROC) Comparison", use_container_width=True)
+    else:
+        st.warning(f"Diagnostic figure not found: {roc_fig_path.name}")
 

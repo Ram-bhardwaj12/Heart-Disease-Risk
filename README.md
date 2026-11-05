@@ -22,7 +22,7 @@ Cardiovascular diseases (CVDs) remain the leading cause of mortality worldwide. 
 
 | Role | Member Name & Enrollment | Assigned Responsibilities | Owns |
 | :--- | :--- | :--- | :--- |
-| **Developer** | `[Your Name, Enrollment No.]` | End-to-end data pipeline, model training, SHAP explainability analysis, Streamlit application, and cloud deployment. | `src/`, `models/`, `data/`, later notebooks, deployment |
+| **Developer** | Ram Bhardwaj, A60205224028 | End-to-end data pipeline, model training, SHAP explainability analysis, Streamlit application, and cloud deployment. | `src/`, `models/`, `data/`, later notebooks, deployment |
 | **Teammate** | `[Name, Enrollment No.]` | Works independently; contributions to be updated. | EDA notebook, `reports/`, Streamlit UI pages |
 
 ---
@@ -154,10 +154,12 @@ The project executes through eight sequential, modular phases:
 ## 💻 Web Application Features
 
 * **Interactive Clinical Parameter Sidebar:** Responsive entry fields for all 13 clinical variables with strict input boundary validations and plain-English tooltips.
+* **Out-of-Range Safety Notice:** Real-time boundary validation alerts users with a visible caution notice if entered parameters fall outside empirical training ranges.
 * **Stratified Risk Indicator:** Outputs real-time model score categorized into intuitive risk tiers (the number is a model score whose calibration was not checked):
   * 🟢 **Low Risk:** $< 0.30$ (the screening threshold chosen on training data)
   * 🟡 **Moderate Risk:** $0.30 - 0.50$
   * 🔴 **High Risk:** $\ge 0.50$
+* **Interactive What-If Sensitivity Analysis:** Dedicated tab enabling users to vary individual continuous test values across observed ranges to visualize model score response curves while holding other inputs constant.
 * **Patient-Specific SHAP Waterfall Plot:** Granular visualization highlighting factors pushing predicted risk upward (red) or downward (blue) relative to baseline prevalence.
 * **Global Model Insights & Metrics:** Dedicated view displaying model architecture, cross-validation metrics, confusion matrices, and global feature importance.
 * **Dataset & Methodology Overview:** Clear documentation on clinical features, cleaning procedures, and performance benchmarks.
@@ -176,6 +178,7 @@ heart-disease-prediction/
 ├── src/                     # Reusable production source code (cleaning, training, SHAP utilities)
 ├── models/                  # Serialized joblib pipelines, model weights, and explainer objects
 ├── app/                     # Multi-page Streamlit web application source code
+├── tests/                   # Automated pytest suite verifying prediction consistency and logic safety
 ├── reports/                 # Generated evaluation metrics, figures, and presentation artifacts
 │   └── figures/             # Exported PNG plots (ROC curves, confusion matrices, SHAP charts)
 ├── requirements.txt         # Minimal pinned dependencies for production Streamlit deployment
@@ -369,6 +372,11 @@ streamlit run app/app.py
 ```
 Open your web browser and navigate to `http://localhost:8501`.
 
+### 5. Run the Automated Tests
+```bash
+python -m pytest -q
+```
+
 ---
 
 ## 🌐 Deployment
@@ -455,13 +463,13 @@ Live app URL: [to be added after deployment]
 
 #### Local Patient SHAP Waterfall Explanations
 ![High-Risk True Positive Waterfall](reports/figures/shap_waterfall_high_risk.png)
-*High-Risk True Positive: Test Row Index 41, True Label = 1, Predicted Probability = 0.9312*
+*High-Risk True Positive: Test Row Index 41, True Label = 1, Model score = 0.9312*
 
 ![Low-Risk True Negative Waterfall](reports/figures/shap_waterfall_low_risk.png)
-*Low-Risk True Negative: Test Row Index 6, True Label = 0, Predicted Probability = 0.1011*
+*Low-Risk True Negative: Test Row Index 6, True Label = 0, Model score = 0.1011*
 
 ![Missed-Case False Negative Waterfall](reports/figures/shap_waterfall_missed_case.png)
-*Missed-Case False Negative: Test Row Index 18, True Label = 1, Predicted Probability = 0.4630*
+*Missed-Case False Negative: Test Row Index 18, True Label = 1, Model score = 0.4630*
 
 ---
 

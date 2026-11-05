@@ -6,7 +6,7 @@ All paths are dynamically resolved relative to the repository root.
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import joblib
 import numpy as np
@@ -33,6 +33,18 @@ DISPLAY_LABELS = {
     "ca": "Number of major vessels (ca)",
     "thal": "Thalassemia type code (thal)",
 }
+
+
+class ValidationResult(NamedTuple):
+    """Container for input validation errors and out-of-range warnings."""
+
+    errors: list[str]
+    warnings: list[str]
+
+    @property
+    def is_valid(self) -> bool:
+        """Return True if there are zero fatal errors."""
+        return len(self.errors) == 0
 
 
 @st.cache_resource
@@ -201,13 +213,112 @@ def get_feature_specs() -> dict:
     return specs
 
 
+@st.cache_data
+def get_typical_values() -> dict:
+    """Compute typical clinical inputs (medians for numeric, modes for categorical) from training data."""
+    df_train = load_train_features()
+    categorical_cols = ["sex", "cp", "fbs", "restecg", "exang", "slope", "ca", "thal"]
+    typical = {}
+    for col in df_train.columns:
+        valid_s = df_train[col].dropna()
+        if col in categorical_cols:
+            typical[col] = int(valid_s.mode().iloc[0])
+        else:
+            is_float = col == "oldpeak"
+            val = float(valid_s.median())
+            typical[col] = round(val, 1) if is_float else int(round(val))
+    return typical
+
+
+def validate_inputs(inputs: Any) -> ValidationResult:
+    """Validate 13 patient input features against training schema and boundaries.
+
+    Returns: ValidationResult(errors, warnings).
+    - Errors (fatal): missing keys, NaN/None, non-numeric values, or unseen categorical codes.
+    - Warnings (non-fatal): numeric values outside training min/max bounds.
+    """
+    if isinstance(inputs, pd.DataFrame):
+        inputs_dict = inputs.iloc[0].to_dict()
+    elif isinstance(inputs, pd.Series):
+        inputs_dict = inputs.to_dict()
+    else:
+        inputs_dict = dict(inputs)
+
+    df_train = load_train_features()
+    expected_cols = df_train.columns.tolist()
+
+    categorical_cols = ["sex", "cp", "fbs", "restecg", "exang", "slope", "ca", "thal"]
+    numeric_cols = ["age", "trestbps", "chol", "thalach", "oldpeak"]
+
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    # Valid categories observed in training data (excluding NaN)
+    valid_categories = {}
+    for col in categorical_cols:
+        valid_categories[col] = set(df_train[col].dropna().astype(int).unique())
+
+    # Training ranges for continuous numeric features
+    train_ranges = {}
+    for col in numeric_cols:
+        valid_s = df_train[col].dropna()
+        train_ranges[col] = (float(valid_s.min()), float(valid_s.max()))
+
+    for col in expected_cols:
+        if col not in inputs_dict:
+            errors.append(f"Missing required input feature: '{col}'")
+            continue
+
+        raw_val = inputs_dict[col]
+
+        # Check for missing / None / NaN
+        if raw_val is None or (isinstance(raw_val, (float, np.floating)) and np.isnan(raw_val)):
+            # In Phase 3 preprocessing, ca and thal were the only features where invalid codes (ca=4, thal=0)
+            # were converted to NaN and imputed by the fitted preprocessor imputer.
+            if col in ["ca", "thal"]:
+                continue
+            errors.append(f"Feature '{col}' has a missing (NaN/None) value.")
+            continue
+
+        # Check for non-numeric (strings that cannot be parsed as float, complex types, etc.)
+        try:
+            val_float = float(raw_val)
+            if np.isnan(val_float) or np.isinf(val_float):
+                errors.append(f"Feature '{col}' has invalid non-finite value: {raw_val}")
+                continue
+        except (ValueError, TypeError):
+            errors.append(f"Feature '{col}' must be numeric; got {type(raw_val).__name__} ({raw_val!r})")
+            continue
+
+        # Check categorical features
+        if col in categorical_cols:
+            if not float(val_float).is_integer():
+                errors.append(f"Categorical feature '{col}' must be an integer code; got {val_float}")
+            else:
+                int_code = int(val_float)
+                if int_code not in valid_categories[col]:
+                    allowed_str = ", ".join(str(c) for c in sorted(valid_categories[col]))
+                    errors.append(
+                        f"Categorical feature '{col}' has unseen category {int_code}. Allowed values: [{allowed_str}]."
+                    )
+        elif col in numeric_cols:
+            min_bound, max_bound = train_ranges[col]
+            if val_float < min_bound or val_float > max_bound:
+                disp = DISPLAY_LABELS.get(col, col)
+                warnings.append(
+                    f"{disp} ({val_float}) is outside training range [{min_bound:.1f}, {max_bound:.1f}]"
+                )
+
+    return ValidationResult(errors=errors, warnings=warnings)
+
+
 def get_recall_threshold() -> float:
     """Retrieve Random Forest recall-oriented operating threshold from evaluation summary."""
     summary = load_evaluation_summary()
     try:
         threshold = summary["recall_oriented_operating_point"]["chosen_threshold"]["random_forest"]["threshold"]
         return float(threshold)
-    except KeyError as exc:
+    except (KeyError, TypeError) as exc:
         raise KeyError(
             "Could not locate Random Forest recall-oriented operating threshold in reports/evaluation_summary.json"
         ) from exc
@@ -229,16 +340,26 @@ def risk_tier(score: float) -> tuple[str, str, str]:
 
 
 def predict_score(inputs: Any) -> float:
-    """Predict heart disease model score for input dictionary or DataFrame/Series."""
+    """Predict heart disease model score for input dictionary or DataFrame/Series.
+
+    Refuses to run on invalid inputs with a clear ValueError.
+    Does not mutate the input dictionary.
+    """
     if isinstance(inputs, pd.DataFrame):
-        inputs = inputs.iloc[0].to_dict()
+        inputs_dict = inputs.iloc[0].to_dict()
     elif isinstance(inputs, pd.Series):
-        inputs = inputs.to_dict()
+        inputs_dict = inputs.to_dict()
+    else:
+        inputs_dict = dict(inputs)
+
+    val_res = validate_inputs(inputs_dict)
+    if not val_res.is_valid:
+        raise ValueError(f"Invalid inputs: {'; '.join(val_res.errors)}")
 
     df_train = load_train_features()
     expected_cols = df_train.columns.tolist()
 
-    row_data = {col: float(inputs[col]) for col in expected_cols}
+    row_data = {col: float(inputs_dict[col]) for col in expected_cols}
     row_df = pd.DataFrame([row_data], columns=expected_cols, dtype=np.float64)
 
     pipeline = load_model_pipeline()
@@ -246,17 +367,77 @@ def predict_score(inputs: Any) -> float:
     return float(prob)
 
 
-def explain_patient(inputs: Any) -> shap.Explanation:
-    """Generate SHAP Explanation for patient input with original display units."""
+def what_if_curve(inputs: Any, feature: str, n_points: int = 25) -> pd.DataFrame:
+    """Compute model score curve by varying one numeric feature while holding others fixed.
+
+    Returns a DataFrame with columns ['value', 'score'].
+    """
     if isinstance(inputs, pd.DataFrame):
-        inputs = inputs.iloc[0].to_dict()
+        inputs_dict = inputs.iloc[0].to_dict()
     elif isinstance(inputs, pd.Series):
-        inputs = inputs.to_dict()
+        inputs_dict = inputs.to_dict()
+    else:
+        inputs_dict = dict(inputs)
+
+    val_res = validate_inputs(inputs_dict)
+    if not val_res.is_valid:
+        raise ValueError(f"Invalid inputs: {'; '.join(val_res.errors)}")
+
+    df_train = load_train_features()
+    if feature not in df_train.columns:
+        raise ValueError(f"Feature '{feature}' not found in training columns.")
+
+    valid_s = df_train[feature].dropna()
+    min_val = float(valid_s.min())
+    max_val = float(valid_s.max())
+
+    grid_values = np.linspace(min_val, max_val, n_points)
+
+    curr_val = float(inputs_dict[feature])
+    if min_val <= curr_val <= max_val:
+        closest_idx = int(np.argmin(np.abs(grid_values - curr_val)))
+        grid_values[closest_idx] = curr_val
+        grid_values = np.sort(grid_values)
+
+    expected_cols = df_train.columns.tolist()
+    pipeline = load_model_pipeline()
+
+    rows = []
+    for val in grid_values:
+        row_dict = {c: float(inputs_dict[c]) for c in expected_cols}
+        row_dict[feature] = float(val)
+        rows.append(row_dict)
+
+    batch_df = pd.DataFrame(rows, columns=expected_cols, dtype=np.float64)
+    probs = pipeline.predict_proba(batch_df)[:, 1]
+
+    return pd.DataFrame({
+        "value": grid_values,
+        "score": probs,
+    })
+
+
+def explain_patient(inputs: Any) -> shap.Explanation:
+    """Generate SHAP Explanation for patient input with original display units.
+
+    Refuses to run on invalid inputs with a clear ValueError.
+    Does not mutate the input dictionary.
+    """
+    if isinstance(inputs, pd.DataFrame):
+        inputs_dict = inputs.iloc[0].to_dict()
+    elif isinstance(inputs, pd.Series):
+        inputs_dict = inputs.to_dict()
+    else:
+        inputs_dict = dict(inputs)
+
+    val_res = validate_inputs(inputs_dict)
+    if not val_res.is_valid:
+        raise ValueError(f"Invalid inputs: {'; '.join(val_res.errors)}")
 
     df_train = load_train_features()
     expected_cols = df_train.columns.tolist()
 
-    row_data = {col: float(inputs[col]) for col in expected_cols}
+    row_data = {col: float(inputs_dict[col]) for col in expected_cols}
     row_df = pd.DataFrame([row_data], columns=expected_cols, dtype=np.float64)
 
     pipeline = load_model_pipeline()
@@ -287,7 +468,6 @@ def explain_patient(inputs: Any) -> shap.Explanation:
 
     # Prepare display data in original units for numeric/count features
     display_data = np.zeros(len(feature_names))
-    num_cols = ["age", "trestbps", "chol", "thalach", "oldpeak", "ca"]
 
     for j, col_name in enumerate(feature_names):
         if col_name.startswith("num__"):

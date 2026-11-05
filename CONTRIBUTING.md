@@ -42,6 +42,7 @@ To prevent merge conflicts and accidental overwrites, follow this division of ow
 | `notebooks/01_eda.ipynb` | **Teammate** | Exploratory Data Analysis and statistical visualizations. |
 | `reports/` (Report & PPT) | **Teammate** | Academic project report, slide deck, and presentation assets. |
 | `app/components.py` & `app/pages/*` | **Teammate** | Front-end UI components and subpages (after model files exist). |
+| `tests/` | **Developer** | Automated logic and prediction safety test suite (`tests/test_logic.py`). |
 | `README.md`, `requirements.txt`, `CONTRIBUTING.md` | **Developer** | Repository-level configurations (propose changes via PR). |
 
 > **Note:** This ownership table can be updated anytime by mutual agreement. **Never edit a file owned by the other person without discussing and confirming with them first.**
@@ -110,4 +111,12 @@ pip install -r requirements-dev.txt
 # 3. Launch the Streamlit application
 streamlit run app/app.py
 ```
+
+---
+
+## 🎨 10. Working on the UI
+* **UI Customization:** UI visual styling and layout enhancements go into `app/components.py`, `app/pages/`, and `.streamlit/config.toml`.
+* **Inference Logic Integrity:** Do not edit `app/utils.py` (which houses model score calculation, validation, and SHAP pipelines).
+* **Pre-PR Test Suite:** Always run `python -m pytest -q` before opening or updating a Pull Request and paste the real output into your PR description.
+
 

@@ -59,10 +59,14 @@ col_g1, col_g2 = st.columns(2)
 with col_g1:
     if fig_bar_grouped_path.exists():
         st.image(Image.open(fig_bar_grouped_path), caption="Grouped Clinical Variable Importance (13 Variables)", use_container_width=True)
+    else:
+        st.warning(f"Visualization not found: {fig_bar_grouped_path.name}")
 
 with col_g2:
     if fig_bar_path.exists():
         st.image(Image.open(fig_bar_path), caption="Individual Encoding Importance (22 Encodings)", use_container_width=True)
+    else:
+        st.warning(f"Visualization not found: {fig_bar_path.name}")
 
 st.markdown("---")
 st.subheader("3. Feature Impact & Directionality (Beeswarm)")
@@ -73,4 +77,6 @@ if fig_summary_path.exists():
         caption="SHAP Summary Beeswarm: Color represents feature value (red = high, blue = low); position indicates positive or negative risk attribution.",
         use_container_width=True,
     )
+else:
+    st.warning(f"Visualization not found: {fig_summary_path.name}")
 
