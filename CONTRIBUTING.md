@@ -41,7 +41,7 @@ To prevent merge conflicts and accidental overwrites, follow this division of ow
 | `app/app.py`, `app/utils.py` | **Developer** | App architecture, routing, backend inference, and deployment logic. |
 | `notebooks/01_eda.ipynb` | **Teammate** | Exploratory Data Analysis and statistical visualizations. |
 | `reports/` (Report & PPT) | **Teammate** | Academic project report, slide deck, and presentation assets. |
-| `app/components.py` & `app/pages/*` | **Teammate** | Front-end UI components and subpages (after model files exist). |
+| `app/components.py`, `app/views/`, `app/styles.css`, `app/copy.py`, `app/pages/*` | **Teammate** | Front-end UI components, views, styles, and subpages. |
 | `tests/` | **Developer** | Automated logic and prediction safety test suite (`tests/test_logic.py`). |
 | `README.md`, `requirements.txt`, `CONTRIBUTING.md` | **Developer** | Repository-level configurations (propose changes via PR). |
 
@@ -115,8 +115,16 @@ streamlit run app/app.py
 ---
 
 ## 🎨 10. Working on the UI
-* **UI Customization:** UI visual styling and layout enhancements go into `app/components.py`, `app/pages/`, and `.streamlit/config.toml`.
-* **Inference Logic Integrity:** Do not edit `app/utils.py` (which houses model score calculation, validation, and SHAP pipelines).
-* **Pre-PR Test Suite:** Always run `python -m pytest -q` before opening or updating a Pull Request and paste the real output into your PR description.
+* **Application Architecture:** The presentation layer is modularized under `app/`:
+  - `app/styles.css`: CSS variables (`:root` design tokens for colors, typography, cards, badges, and meters).
+  - `app/copy.py`: Centralized user-facing strings, microcopy, and academic medical disclaimers (`COPY` dictionary).
+  - `app/components.py`: Reusable UI widgets and layout blocks (CSS injection, disclaimer strips, footers, tier badges, and risk meters).
+  - `app/views/`: Dedicated page views rendered via `st.navigation` (`estimator.py`, `performance.py`, `explanations.py`, `about.py`).
+  - `app/pages/`: Backward-compatible page entry points forwarding to `app/views/`.
+  - `.streamlit/config.toml`: Global theme settings (`primaryColor`, background colors, toolbar modes).
+* **Where to Add or Edit Copy:** All text, button labels, tooltips, and explanations must be edited **only in `app/copy.py`**. Never hardcode user-facing copy inside views or components.
+* **Where to Change Colors or Tokens:** Theme colors and visual tokens must be modified in `app/styles.css` (CSS custom properties) and synchronized with `.streamlit/config.toml`.
+* **Inference Logic Integrity:** Do not edit `app/utils.py` without coordinating with the Developer, as it houses production model inference, input validation, tree agreement, and SHAP pipelines.
+* **Testing Requirement:** `python -m pytest -q` must pass with zero failures and zero project warnings after any change to UI views, copy, or components. Always run the test suite and paste the real output in your PR.
 
 

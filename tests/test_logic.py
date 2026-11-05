@@ -206,3 +206,119 @@ def test_h_apptest_pages_and_exemplars():
     score_18 = utils.predict_score(X_test.iloc[18].to_dict())
     assert at_main.metric[0].value == f"{score_18 * 100.0:.1f}%"
 
+
+def test_i_tree_agreement():
+    """Verify mean over all trees equals pipeline.predict_proba[:, 1] within 1e-9 for all 61 test rows."""
+    expected_cols = X_test.columns.tolist()
+    for idx in range(len(X_test)):
+        row_dict = X_test.iloc[idx].to_dict()
+        tree_scores, share_ge_05, mean_tree_score = utils.tree_agreement(row_dict)
+        row_df = pd.DataFrame([{col: float(row_dict[col]) for col in expected_cols}], columns=expected_cols, dtype=np.float64)
+        direct_prob = float(pipeline.predict_proba(row_df)[0, 1])
+        assert abs(mean_tree_score - direct_prob) < 1e-9, f"Row {idx} tree agreement mean mismatch: {mean_tree_score} vs {direct_prob}"
+        assert len(tree_scores) == 400
+
+
+def test_j_explain_grouped():
+    """Verify explain_grouped returns 13 rows, sums to 22-column SHAP sum within 1e-9, and thal equals sum of nom__thal columns."""
+    sample = X_test.iloc[0].to_dict()
+    df_grouped = utils.explain_grouped(sample)
+    assert len(df_grouped) == 13, f"Expected 13 rows, got {len(df_grouped)}"
+    assert set(df_grouped["feature"]) == set(sample.keys())
+
+    # Direct 22-column SHAP
+    raw_exp = utils.explain_patient(sample)
+    raw_shap_sum = float(np.sum(raw_exp.values))
+    grouped_shap_sum = float(df_grouped["shap_amount"].sum())
+    assert abs(grouped_shap_sum - raw_shap_sum) < 1e-9, f"Grouped SHAP sum mismatch: {grouped_shap_sum} vs {raw_shap_sum}"
+
+    # thal row equals sum of the three nom__thal columns
+    thal_grouped_val = float(df_grouped.loc[df_grouped["feature"] == "thal", "shap_amount"].iloc[0])
+    thal_col_indices = [i for i, name in enumerate(raw_exp.feature_names) if "nom__thal" in name or name == "thal"]
+    expected_thal_sum = float(np.sum(raw_exp.values[thal_col_indices]))
+    assert abs(thal_grouped_val - expected_thal_sum) < 1e-9, f"thal sum mismatch: {thal_grouped_val} vs {expected_thal_sum}"
+
+
+def test_k_risk_meter_boundaries():
+    """Verify zone boundaries equal the cut-offs read from reports/evaluation_summary.json (0.30 and 0.50)."""
+    t_opt = utils.get_recall_threshold()
+    assert abs(t_opt - 0.30) < 1e-4, f"Operating threshold mismatch: {t_opt}"
+
+    t_low = t_opt - 1e-4
+    t_mod1 = t_opt
+    t_mod2 = 0.50 - 1e-4
+    t_high = 0.50
+
+    assert utils.risk_tier(t_low)[0] == "Low"
+    assert utils.risk_tier(t_mod1)[0] == "Moderate"
+    assert utils.risk_tier(t_mod2)[0] == "Moderate"
+    assert utils.risk_tier(t_high)[0] == "High"
+
+
+def test_l_quick_start_buttons():
+    """Verify displayed score after each Quick start button equals predict_score for that patient."""
+    at = AppTest.from_file(str(REPO_ROOT / "app" / "app.py"))
+    at.run(timeout=30)
+    assert len(at.exception) == 0
+
+    # Button 0: High score (row 41)
+    at.button[0].click().run(timeout=30)
+    assert len(at.exception) == 0
+    score_41 = utils.predict_score(X_test.iloc[41].to_dict())
+    assert at.metric[0].value == f"{score_41 * 100.0:.1f}%"
+
+    # Button 1: Low score (row 6)
+    at.button[1].click().run(timeout=30)
+    assert len(at.exception) == 0
+    score_6 = utils.predict_score(X_test.iloc[6].to_dict())
+    assert at.metric[0].value == f"{score_6 * 100.0:.1f}%"
+
+    # Button 2: Borderline / Missed at 0.5 (row 18)
+    at.button[2].click().run(timeout=30)
+    assert len(at.exception) == 0
+    score_18 = utils.predict_score(X_test.iloc[18].to_dict())
+    assert at.metric[0].value == f"{score_18 * 100.0:.1f}%"
+
+    # Button 3: Reset to typical values
+    at.button[3].click().run(timeout=30)
+    assert len(at.exception) == 0
+    score_typical = utils.predict_score(utils.get_typical_values())
+    assert at.metric[0].value == f"{score_typical * 100.0:.1f}%"
+
+
+def test_m_html_and_csv_reports():
+    """Verify HTML report contains disclaimer sentence and no unescaped '<script'; CSV contains inputs, score, tier, disclaimer."""
+    from app.components import COPY
+    disclaimer = COPY["DISCLAIMER"]
+    assert disclaimer == "Educational project, not a medical diagnosis. Do not use this tool to make health decisions."
+
+    sample = X_test.iloc[2].to_dict()
+    score = utils.predict_score(sample)
+    tier_name, badge_text, _ = utils.risk_tier(score)
+    df_grouped = utils.explain_grouped(sample)
+    tree_scores, share_ge_05, mean_score = utils.tree_agreement(sample)
+    summary_sentence = utils.build_summary_sentence(score, tier_name, df_grouped)
+
+    html_report = utils.generate_html_report(sample, score, tier_name, summary_sentence, df_grouped, share_ge_05)
+    assert disclaimer in html_report, "HTML report missing verbatim medical disclaimer"
+    assert "<script" not in html_report.lower(), "HTML report contains potentially unsafe <script tag"
+    assert "<html" in html_report.lower() and "</html>" in html_report.lower()
+
+    # CSV report verification
+    import io
+    csv_row = dict(sample)
+    csv_row["predicted_score"] = round(score, 4)
+    csv_row["risk_tier"] = tier_name
+    csv_row["disclaimer"] = disclaimer
+    df_csv = pd.DataFrame([csv_row])
+    csv_buffer = io.StringIO()
+    df_csv.to_csv(csv_buffer, index=False)
+    csv_content = csv_buffer.getvalue()
+
+    assert disclaimer in csv_content
+    read_df = pd.read_csv(io.StringIO(csv_content))
+    expected_cols = set(sample.keys()) | {"predicted_score", "risk_tier", "disclaimer"}
+    assert set(read_df.columns) == expected_cols
+    assert read_df["risk_tier"].iloc[0] == tier_name
+
+

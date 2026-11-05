@@ -153,17 +153,33 @@ The project executes through eight sequential, modular phases:
 
 ## 💻 Web Application Features
 
-* **Interactive Clinical Parameter Sidebar:** Responsive entry fields for all 13 clinical variables with strict input boundary validations and plain-English tooltips.
-* **Out-of-Range Safety Notice:** Real-time boundary validation alerts users with a visible caution notice if entered parameters fall outside empirical training ranges.
-* **Stratified Risk Indicator:** Outputs real-time model score categorized into intuitive risk tiers (the number is a model score whose calibration was not checked):
-  * 🟢 **Low Risk:** $< 0.30$ (the screening threshold chosen on training data)
-  * 🟡 **Moderate Risk:** $0.30 - 0.50$
-  * 🔴 **High Risk:** $\ge 0.50$
-* **Interactive What-If Sensitivity Analysis:** Dedicated tab enabling users to vary individual continuous test values across observed ranges to visualize model score response curves while holding other inputs constant.
-* **Patient-Specific SHAP Waterfall Plot:** Granular visualization highlighting factors pushing predicted risk upward (red) or downward (blue) relative to baseline prevalence.
-* **Global Model Insights & Metrics:** Dedicated view displaying model architecture, cross-validation metrics, confusion matrices, and global feature importance.
-* **Dataset & Methodology Overview:** Clear documentation on clinical features, cleaning procedures, and performance benchmarks.
-* **Mandatory Medical Disclaimer:** Prominent alert reminding users that the software is strictly an academic demonstration and not a substitute for professional clinical diagnosis.
+The application features a modern, accessible presentation layer built with Streamlit, custom design system tokens (`app/styles.css`), centralized microcopy (`app/copy.py`), and `st.navigation`:
+
+* **Structured Multi-Page Navigation:** Modern navigation across 4 dedicated views:
+  * **Risk Estimator:** Patient evaluation console with sidebar inputs and four analytical tabs.
+  * **Model Performance:** Cross-validation and held-out test evaluation benchmarks with 95% bootstrap confidence intervals and threshold comparisons.
+  * **Global Explanations:** Cohort-level TreeSHAP feature attribution beeswarm plots and 13-variable grouped importance rankings.
+  * **About:** Complete data lineage, missing value imputation rules, modeling pipeline architecture, and academic limitations.
+* **Streamlined Clinical Sidebar:**
+  * **Quick Start Profiles:** One-click loading of demonstration patients from the held-out test set (High score patient #41, Low score patient #6, Borderline missed patient #18, and median/mode baseline reset).
+  * **Collapsible Clinical Sections:** Input parameters organized logically into three expandable groups: *Patient Demographics*, *Exercise & Symptoms*, and *Diagnostic Tests*.
+  * **Real-Time Safety Boundary Validation:** Immediate visual alerts when user inputs exceed empirical training ranges.
+* **Interactive Risk Estimator (4 Analytical Tabs):**
+  * **Tab 1: Result:**
+    * **Risk KPI Card & Status Pill:** Displays model score percentage alongside color-coded risk tier badges (🟢 Low Risk $< 0.30$, 🟡 Moderate Risk $0.30 - 0.50$, 🔴 High Risk $\ge 0.50$).
+    * **Visual Risk Meter:** Horizontal graded scale showing low, moderate, and high zones with a dynamic position marker and a popover detailing clinical threshold criteria.
+    * **Model Agreement Consensus:** Analyzes voting behavior across all 400 constituent Decision Trees in the Random Forest, displaying the percentage of trees voting positive and an Altair score distribution histogram.
+  * **Tab 2: Explanation (Grouped TreeSHAP):**
+    * **13-Feature Grouped Local Attribution:** Combines one-hot encoded categories into their respective parent clinical features (e.g., `thal`, `cp`, `slope`, `restecg`) to provide clean, patient-level explanations.
+    * **Interactive Sorting & Filtering:** Filter attributions by direction (*All*, *Raised Risk*, *Lowered Risk*).
+    * **Top Contributor Highlights:** Plain-language summary of the top 3 factors driving the score upward and downward.
+  * **Tab 3: What-If Sensitivity:**
+    * **Counterfactual Response Curves:** Computes and plots real-time score trajectories across 25 grid points for any continuous feature while keeping other inputs fixed.
+    * **Interactive Trial Slider:** Test alternate clinical values on-the-fly and observe simulated risk deltas against baseline.
+  * **Tab 4: Clinical Reports & Export:**
+    * **In-Memory HTML Report:** Downloadable, self-contained single-page clinical summary report with patient inputs, risk tier, agreement metrics, and grouped SHAP attributions.
+    * **CSV Export:** Downloadable tabular file containing inputs, score, risk category, and timestamp.
+* **Persistent Academic Disclaimer:** Verbatim medical disclaimer permanently integrated into the top header strip, report downloads, and standardized footer: *"Educational project, not a medical diagnosis. Do not use this tool to make health decisions."*
 
 ---
 

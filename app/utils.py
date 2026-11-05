@@ -482,3 +482,217 @@ def explain_patient(inputs: Any) -> shap.Explanation:
         data=display_data,
         feature_names=feature_names,
     )
+
+
+def tree_agreement(inputs: Any) -> tuple[np.ndarray, float, float]:
+    """Compute per-tree predictions and agreement statistics across the Random Forest ensemble.
+
+    Returns:
+        (tree_scores, share_ge_05, mean_score)
+        where:
+        - tree_scores: 1D np.ndarray of length n_estimators with each tree's predicted probability for class 1.
+        - share_ge_05: float in [0, 1] representing the fraction of trees with score >= 0.50.
+        - mean_score: float arithmetic mean of all tree scores (identical to ensemble predict_proba).
+    """
+    if isinstance(inputs, pd.DataFrame):
+        inputs_dict = inputs.iloc[0].to_dict()
+    elif isinstance(inputs, pd.Series):
+        inputs_dict = inputs.to_dict()
+    else:
+        inputs_dict = dict(inputs)
+
+    val_res = validate_inputs(inputs_dict)
+    if not val_res.is_valid:
+        raise ValueError(f"Invalid inputs: {'; '.join(val_res.errors)}")
+
+    df_train = load_train_features()
+    expected_cols = df_train.columns.tolist()
+
+    row_data = {col: float(inputs_dict[col]) for col in expected_cols}
+    row_df = pd.DataFrame([row_data], columns=expected_cols, dtype=np.float64)
+
+    pipeline = load_model_pipeline()
+    preprocessor = pipeline.named_steps["preprocessor"]
+    rf_classifier = pipeline.named_steps["classifier"]
+
+    row_trans = preprocessor.transform(row_df)
+    row_trans_arr = np.asarray(row_trans)
+
+    tree_scores_list = []
+    for tree in rf_classifier.estimators_:
+        if tree.n_classes_ == 2:
+            p1 = float(tree.predict_proba(row_trans_arr)[0, 1])
+        else:
+            p1 = 1.0 if tree.classes_[0] == 1 else 0.0
+        tree_scores_list.append(p1)
+
+    tree_scores = np.array(tree_scores_list, dtype=np.float64)
+    share_ge_05 = float(np.mean(tree_scores >= 0.50))
+    mean_score = float(np.mean(tree_scores))
+
+    return tree_scores, share_ge_05, mean_score
+
+
+def explain_grouped(inputs: Any) -> pd.DataFrame:
+    """Compute patient SHAP values grouped back into the 13 original clinical features.
+
+    Uses exact column-name matching (never prefix startswith) to prevent thal/thalach collisions.
+    Returns:
+        pd.DataFrame with columns ['feature', 'label', 'value_entered', 'shap_amount', 'abs_shap', 'direction', 'sign_str']
+        sorted by abs_shap descending.
+    """
+    if isinstance(inputs, pd.DataFrame):
+        inputs_dict = inputs.iloc[0].to_dict()
+    elif isinstance(inputs, pd.Series):
+        inputs_dict = inputs.to_dict()
+    else:
+        inputs_dict = dict(inputs)
+
+    explanation = explain_patient(inputs_dict)
+    feature_names = explanation.feature_names
+    shap_vals = explanation.values
+
+    orig_13 = ["age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", "thalach", "exang", "oldpeak", "slope", "ca", "thal"]
+
+    grouped_records = []
+    for f in orig_13:
+        matching_cols = [
+            c for c in feature_names
+            if c in [f"num__{f}", f"bin__{f}"] or c.startswith(f"nom__{f}_")
+        ]
+        col_indices = [feature_names.index(c) for c in matching_cols]
+        feature_shap = float(np.sum(shap_vals[col_indices]))
+        val_entered = inputs_dict.get(f, np.nan)
+
+        grouped_records.append({
+            "feature": f,
+            "label": DISPLAY_LABELS.get(f, f),
+            "value_entered": val_entered,
+            "shap_amount": feature_shap,
+            "abs_shap": abs(feature_shap),
+            "direction": "Raised score (+)" if feature_shap >= 0 else "Lowered score (−)",
+            "sign_str": f"+{feature_shap:.4f}" if feature_shap >= 0 else f"{feature_shap:.4f}",
+        })
+
+    df_grouped = pd.DataFrame(grouped_records)
+    df_grouped = df_grouped.sort_values(by="abs_shap", ascending=False).reset_index(drop=True)
+    return df_grouped
+
+
+def build_summary_sentence(score: float, tier_name: str, grouped_df: pd.DataFrame) -> str:
+    """Build neutral, factual one-sentence summary of model score and top local contributors."""
+    raising = [r for _, r in grouped_df.iterrows() if r["shap_amount"] > 0]
+    lowering = [r for _, r in grouped_df.iterrows() if r["shap_amount"] < 0]
+
+    raising_parts = []
+    for r in raising[:2]:
+        raising_parts.append(f"{r['label']} (entered: {r['value_entered']}, contribution: +{r['shap_amount']:.4f})")
+    raising_str = " and ".join(raising_parts) if raising_parts else "none"
+
+    if lowering:
+        low = lowering[0]
+        lowering_str = f"{low['label']} (entered: {low['value_entered']}, contribution: {low['shap_amount']:.4f})"
+    else:
+        lowering_str = "no inputs"
+
+    if raising_str != "none":
+        return (
+            f"The model estimated a {score*100.0:.1f}% risk score ({tier_name} Risk), with {raising_str} "
+            f"contributing most to raising the score, while {lowering_str} contributed most to lowering the score."
+        )
+    else:
+        return (
+            f"The model estimated a {score*100.0:.1f}% risk score ({tier_name} Risk), with {lowering_str} "
+            f"contributing to lowering the score."
+        )
+
+
+def generate_html_report(
+    inputs: dict,
+    score: float,
+    tier_name: str,
+    summary_sentence: str,
+    grouped_df: pd.DataFrame,
+    share_ge_05: float,
+) -> str:
+    """Generate in-memory, self-contained single-page HTML clinical risk report."""
+    import datetime
+    import html as html_lib
+
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    t_threshold = get_recall_threshold()
+
+    table_rows = []
+    for _, row in grouped_df.iterrows():
+        f_label = html_lib.escape(str(row["label"]))
+        val = html_lib.escape(str(row["value_entered"]))
+        amt = html_lib.escape(f"{row['shap_amount']:+.4f}")
+        dir_color = "#C8423B" if row["shap_amount"] >= 0 else "#1E8E5A"
+        dir_text = "Raised (+)" if row["shap_amount"] >= 0 else "Lowered (−)"
+        table_rows.append(
+            f"<tr><td>{f_label}</td><td><code>{val}</code></td>"
+            f"<td style='color:{dir_color}; font-weight:600;'>{amt}</td><td>{dir_text}</td></tr>"
+        )
+    table_html = "\n".join(table_rows)
+
+    disclaimer_text = html_lib.escape(
+        "Educational project, not a medical diagnosis. Do not use this tool to make health decisions."
+    )
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Heart Disease Risk Assessment Report</title>
+<style>
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #F6F8FB; color: #0F1B2D; margin: 0; padding: 30px; }}
+  .container {{ max-width: 820px; margin: 0 auto; background: #FFFFFF; border: 1px solid #E3E8EF; border-radius: 12px; padding: 32px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }}
+  h1 {{ font-size: 24px; margin-top: 0; color: #0F1B2D; }}
+  .meta {{ color: #5B6B7F; font-size: 13px; margin-bottom: 24px; }}
+  .kpi-row {{ display: flex; gap: 20px; margin-bottom: 24px; }}
+  .kpi-card {{ flex: 1; background: #F8FAFC; border: 1px solid #E3E8EF; border-radius: 8px; padding: 16px; text-align: center; }}
+  .kpi-num {{ font-size: 32px; font-weight: 700; color: #0F1B2D; }}
+  .kpi-label {{ font-size: 13px; color: #5B6B7F; text-transform: uppercase; letter-spacing: 0.05em; }}
+  .summary-box {{ background: #F0F9FF; border-left: 4px solid #0E7C86; padding: 14px 18px; border-radius: 4px; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }}
+  table {{ width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 24px; }}
+  th, td {{ padding: 10px 12px; text-align: left; border-bottom: 1px solid #E3E8EF; }}
+  th {{ background: #F8FAFC; color: #5B6B7F; font-weight: 600; }}
+  .disclaimer {{ background: #FFF8E1; border: 1px solid #FFE082; padding: 14px; border-radius: 6px; font-size: 13px; color: #5D4037; text-align: center; font-weight: 600; margin-top: 24px; }}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🫀 Patient Risk Assessment Report</h1>
+  <div class="meta">Generated: {now_str} | Screening Threshold: {t_threshold:.2f} | High Risk Threshold: 0.50</div>
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-num">{score*100.0:.1f}%</div>
+      <div class="kpi-label">Predicted Model Score</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-num">{html_lib.escape(tier_name)}</div>
+      <div class="kpi-label">Assigned Risk Tier</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-num">{share_ge_05*100.0:.1f}%</div>
+      <div class="kpi-label">Ensemble Agreement (≥0.50)</div>
+    </div>
+  </div>
+  <div class="summary-box">
+    <strong>Case Assessment:</strong> {html_lib.escape(summary_sentence)}
+  </div>
+  <h3>Clinical Attribute Contributions (TreeSHAP Grouped)</h3>
+  <table>
+    <thead>
+      <tr><th>Clinical Indicator</th><th>Entered Value</th><th>SHAP Impact</th><th>Direction</th></tr>
+    </thead>
+    <tbody>
+      {table_html}
+    </tbody>
+  </table>
+  <div class="disclaimer">
+    ⚠️ {disclaimer_text}
+  </div>
+</div>
+</body>
+</html>"""
