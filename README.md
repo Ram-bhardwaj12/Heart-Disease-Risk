@@ -20,10 +20,10 @@ Cardiovascular diseases (CVDs) remain the leading cause of mortality worldwide. 
 
 ## 👥 Project Team
 
-| Role | Member Name & Enrollment | Assigned Responsibilities |
-| :--- | :--- | :--- |
-| **Developer** | `[Your Name, Enrollment No.]` | End-to-end data pipeline, model training, SHAP explainability analysis, Streamlit application, and cloud deployment. |
-| **Teammate** | `[Name, Enrollment No.]` | Works independently; contributions to be updated. |
+| Role | Member Name & Enrollment | Assigned Responsibilities | Owns |
+| :--- | :--- | :--- | :--- |
+| **Developer** | `[Your Name, Enrollment No.]` | End-to-end data pipeline, model training, SHAP explainability analysis, Streamlit application, and cloud deployment. | `src/`, `models/`, `data/`, later notebooks, deployment |
+| **Teammate** | `[Name, Enrollment No.]` | Works independently; contributions to be updated. | EDA notebook, `reports/`, Streamlit UI pages |
 
 ---
 
@@ -312,6 +312,14 @@ Forward and backward passes evaluate schedule float across the workflow:
   $$\sigma^2_{\text{CP}} = \frac{4 + 1 + 1 + 1 + 1 + 1 + 4 + 1 + 1 + 0}{36} = \frac{15}{36} \approx \mathbf{0.417}$$
 * **Project Standard Deviation ($\sigma_{\text{CP}}$):**
   $$\sigma_{\text{CP}} = \sqrt{0.4167} \approx \mathbf{0.65\text{ days}}$$
+
+---
+
+## 🤝 Contributing
+
+We welcome team collaboration! Please consult [CONTRIBUTING.md](CONTRIBUTING.md) for branch guidelines, notebook hygiene, and ownership policies.
+All feature work must be performed on dedicated branches (`feature/<yourname>-<task>`) and merged into `main` exclusively through a reviewed Pull Request.
+Direct commits to `main` are strictly disallowed to prevent merge conflicts and preserve deployment stability.
 
 ---
 
