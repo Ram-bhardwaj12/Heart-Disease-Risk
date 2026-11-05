@@ -1,0 +1,74 @@
+{
+  "dataset_rows": {
+    "total_deduplicated": 302,
+    "train_rows": 241,
+    "test_rows": 61,
+    "test_split_ratio": 0.2,
+    "random_state": 42
+  },
+  "disease_class_balance": {
+    "overall": {
+      "counts": {
+        "0": 164,
+        "1": 138
+      },
+      "percentages": {
+        "0": 54.3,
+        "1": 45.7
+      }
+    },
+    "train": {
+      "counts": {
+        "0": 131,
+        "1": 110
+      },
+      "percentages": {
+        "0": 54.36,
+        "1": 45.64
+      }
+    },
+    "test": {
+      "counts": {
+        "0": 33,
+        "1": 28
+      },
+      "percentages": {
+        "0": 54.1,
+        "1": 45.9
+      }
+    },
+    "train_test_disease_pct_diff": 0.2585
+  },
+  "invalid_codes_replaced": {
+    "ca": 4,
+    "thal": 2
+  },
+  "output_feature_names": [
+    "num__age",
+    "num__trestbps",
+    "num__chol",
+    "num__thalach",
+    "num__oldpeak",
+    "num__ca",
+    "bin__sex",
+    "bin__fbs",
+    "bin__exang",
+    "nom__cp_0.0",
+    "nom__cp_1.0",
+    "nom__cp_2.0",
+    "nom__cp_3.0",
+    "nom__restecg_0.0",
+    "nom__restecg_1.0",
+    "nom__restecg_2.0",
+    "nom__slope_0.0",
+    "nom__slope_1.0",
+    "nom__slope_2.0",
+    "nom__thal_1.0",
+    "nom__thal_2.0",
+    "nom__thal_3.0"
+  ],
+  "environment": {
+    "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "sklearn_version": "1.9.1"
+  }
+}

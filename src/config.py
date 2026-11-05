@@ -15,8 +15,15 @@ FIGURES_DIR = REPORTS_DIR / "figures"
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
 TARGET_COL = "target"
+DISEASE_COL = "disease"
+
+# Invalid / Anomalous Clinical Value Codes
+INVALID_CODES = {"ca": 4, "thal": 0}
 
 # Feature Subsets
 NUMERIC_FEATURES = ["age", "trestbps", "chol", "thalach", "oldpeak"]
-CATEGORICAL_FEATURES = ["sex", "cp", "fbs", "restecg", "exang", "slope", "ca", "thal"]
+COUNT_FEATURES = ["ca"]
+BINARY_FEATURES = ["sex", "fbs", "exang"]
+NOMINAL_FEATURES = ["cp", "restecg", "slope", "thal"]
+CATEGORICAL_FEATURES = BINARY_FEATURES + NOMINAL_FEATURES
 
