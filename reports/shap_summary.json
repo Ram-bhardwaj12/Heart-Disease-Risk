@@ -1,0 +1,277 @@
+{
+  "environment": {
+    "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "sklearn_version": "1.9.1",
+    "shap_version": "0.51.0",
+    "numpy_version": "2.4.6",
+    "pandas_version": "3.1.1"
+  },
+  "explainer": {
+    "type": "TreeExplainer",
+    "class_selected": 1,
+    "class_description": "disease = 1 (presence of heart disease)",
+    "base_value": 0.45965767634854715
+  },
+  "additivity_check": {
+    "formula": "base_value + sum(shap_values) == predict_proba[:, 1]",
+    "max_absolute_error": 1.3322676295501878e-15,
+    "threshold": 0.0001,
+    "passed": true
+  },
+  "direction_checks_spearman": {
+    "num__thalach": {
+      "correlation": -0.9628219672101872,
+      "p_value": 3.118925709574821e-35,
+      "passed": true,
+      "expected": "negative"
+    },
+    "num__oldpeak": {
+      "correlation": 0.8518064822536512,
+      "p_value": 3.2749982786993024e-18,
+      "passed": true,
+      "expected": "positive"
+    },
+    "bin__exang": {
+      "correlation": 0.8230548917531015,
+      "p_value": 3.9879190626465385e-16,
+      "passed": true,
+      "expected": "positive"
+    },
+    "all_passed": true
+  },
+  "rankings": {
+    "encoded_22_features": [
+      {
+        "rank": 1,
+        "feature": "num__ca",
+        "mean_abs_shap": 0.078887
+      },
+      {
+        "rank": 2,
+        "feature": "nom__cp_0.0",
+        "mean_abs_shap": 0.064812
+      },
+      {
+        "rank": 3,
+        "feature": "nom__thal_2.0",
+        "mean_abs_shap": 0.061263
+      },
+      {
+        "rank": 4,
+        "feature": "nom__thal_3.0",
+        "mean_abs_shap": 0.045862
+      },
+      {
+        "rank": 5,
+        "feature": "bin__exang",
+        "mean_abs_shap": 0.041587
+      },
+      {
+        "rank": 6,
+        "feature": "num__oldpeak",
+        "mean_abs_shap": 0.038433
+      },
+      {
+        "rank": 7,
+        "feature": "num__thalach",
+        "mean_abs_shap": 0.030281
+      },
+      {
+        "rank": 8,
+        "feature": "nom__slope_2.0",
+        "mean_abs_shap": 0.02104
+      },
+      {
+        "rank": 9,
+        "feature": "num__age",
+        "mean_abs_shap": 0.020247
+      },
+      {
+        "rank": 10,
+        "feature": "bin__sex",
+        "mean_abs_shap": 0.013953
+      },
+      {
+        "rank": 11,
+        "feature": "nom__slope_1.0",
+        "mean_abs_shap": 0.013906
+      },
+      {
+        "rank": 12,
+        "feature": "nom__cp_2.0",
+        "mean_abs_shap": 0.010533
+      },
+      {
+        "rank": 13,
+        "feature": "num__chol",
+        "mean_abs_shap": 0.007531
+      },
+      {
+        "rank": 14,
+        "feature": "nom__cp_1.0",
+        "mean_abs_shap": 0.003762
+      },
+      {
+        "rank": 15,
+        "feature": "nom__restecg_1.0",
+        "mean_abs_shap": 0.003497
+      },
+      {
+        "rank": 16,
+        "feature": "num__trestbps",
+        "mean_abs_shap": 0.00346
+      },
+      {
+        "rank": 17,
+        "feature": "nom__restecg_0.0",
+        "mean_abs_shap": 0.002808
+      },
+      {
+        "rank": 18,
+        "feature": "nom__cp_3.0",
+        "mean_abs_shap": 0.000669
+      },
+      {
+        "rank": 19,
+        "feature": "bin__fbs",
+        "mean_abs_shap": 0.000491
+      },
+      {
+        "rank": 20,
+        "feature": "nom__slope_0.0",
+        "mean_abs_shap": 0.000338
+      },
+      {
+        "rank": 21,
+        "feature": "nom__thal_1.0",
+        "mean_abs_shap": 0.000175
+      },
+      {
+        "rank": 22,
+        "feature": "nom__restecg_2.0",
+        "mean_abs_shap": 0.0
+      }
+    ],
+    "grouped_13_original_features": [
+      {
+        "rank": 1,
+        "feature": "thal",
+        "mean_abs_shap": 0.13758
+      },
+      {
+        "rank": 2,
+        "feature": "cp",
+        "mean_abs_shap": 0.079776
+      },
+      {
+        "rank": 3,
+        "feature": "ca",
+        "mean_abs_shap": 0.078887
+      },
+      {
+        "rank": 4,
+        "feature": "exang",
+        "mean_abs_shap": 0.041587
+      },
+      {
+        "rank": 5,
+        "feature": "oldpeak",
+        "mean_abs_shap": 0.038433
+      },
+      {
+        "rank": 6,
+        "feature": "slope",
+        "mean_abs_shap": 0.035284
+      },
+      {
+        "rank": 7,
+        "feature": "thalach",
+        "mean_abs_shap": 0.030281
+      },
+      {
+        "rank": 8,
+        "feature": "age",
+        "mean_abs_shap": 0.020247
+      },
+      {
+        "rank": 9,
+        "feature": "sex",
+        "mean_abs_shap": 0.013953
+      },
+      {
+        "rank": 10,
+        "feature": "chol",
+        "mean_abs_shap": 0.007531
+      },
+      {
+        "rank": 11,
+        "feature": "restecg",
+        "mean_abs_shap": 0.006305
+      },
+      {
+        "rank": 12,
+        "feature": "trestbps",
+        "mean_abs_shap": 0.00346
+      },
+      {
+        "rank": 13,
+        "feature": "fbs",
+        "mean_abs_shap": 0.000491
+      }
+    ],
+    "top5_comparison_impurity_vs_shap": [
+      {
+        "rank": 1,
+        "rf_impurity_feature": "num__ca",
+        "rf_impurity_value": 0.166936,
+        "shap_22_feature": "num__ca",
+        "shap_22_mean_abs": 0.078887
+      },
+      {
+        "rank": 2,
+        "rf_impurity_feature": "nom__cp_0.0",
+        "rf_impurity_value": 0.136939,
+        "shap_22_feature": "nom__cp_0.0",
+        "shap_22_mean_abs": 0.064812
+      },
+      {
+        "rank": 3,
+        "rf_impurity_feature": "nom__thal_2.0",
+        "rf_impurity_value": 0.13205,
+        "shap_22_feature": "nom__thal_2.0",
+        "shap_22_mean_abs": 0.061263
+      },
+      {
+        "rank": 4,
+        "rf_impurity_feature": "num__oldpeak",
+        "rf_impurity_value": 0.098726,
+        "shap_22_feature": "nom__thal_3.0",
+        "shap_22_mean_abs": 0.045862
+      },
+      {
+        "rank": 5,
+        "rf_impurity_feature": "nom__thal_3.0",
+        "rf_impurity_value": 0.094808,
+        "shap_22_feature": "bin__exang",
+        "shap_22_mean_abs": 0.041587
+      }
+    ]
+  },
+  "selected_exemplar_rows": {
+    "high_risk_true_positive": {
+      "test_row_index": 41,
+      "true_label": 1,
+      "predicted_probability": 0.93121
+    },
+    "low_risk_true_negative": {
+      "test_row_index": 6,
+      "true_label": 0,
+      "predicted_probability": 0.101145
+    },
+    "missed_case_false_negative": {
+      "test_row_index": 18,
+      "true_label": 1,
+      "predicted_probability": 0.46298
+    }
+  }
+}

@@ -372,7 +372,7 @@ Open your web browser and navigate to `http://localhost:8501`.
 - [x] **Phase 3:** Feature encoding, scaling, and stratified train/test split
 - [x] **Phase 4:** Baseline Logistic Regression & tuned Random Forest training
 - [x] **Phase 5:** Model evaluation with recall, ROC-AUC, and confusion matrix benchmarking
-- [ ] **Phase 6:** Global and local SHAP explainability visualizations
+- [x] **Phase 6:** Global and local SHAP explainability visualizations
 - [ ] **Phase 7:** Streamlit interactive dashboard development and validation
 - [ ] **Phase 8:** Streamlit Community Cloud production deployment & documentation
 
@@ -410,11 +410,37 @@ Open your web browser and navigate to `http://localhost:8501`.
 
 **Model comparison note:** The bootstrap paired difference between Random Forest and Logistic Regression (RF minus LR) on the held-out test set shows a mean difference in ROC-AUC of -0.0068 (95% CI: [-0.0379, +0.0249]) and a mean difference in Recall of +0.0000 (95% CI: [+0.0000, +0.0000]). Because both 95% confidence intervals include zero, the data does not show a clear difference between the two models. Random Forest is used as the project's main model by design, and Logistic Regression is the baseline.
 
+### Explainability Findings
+
+* **Top 5 Grouped Features (Mean |SHAP|):**
+  1. `thal`: 0.137580
+  2. `cp`: 0.079776
+  3. `ca`: 0.078887
+  4. `exang`: 0.041587
+  5. `oldpeak`: 0.038433
+* **Clinical Direction Checks:** Spearman rank correlation confirmed that higher maximum heart rate reduces predicted disease risk (`num__thalach`: r = -0.9628, p = 3.1189e-35), while greater ST depression (`num__oldpeak`: r = +0.8518, p = 3.2750e-18) and exercise-induced angina (`bin__exang`: r = +0.8231, p = 3.9879e-16) both increase predicted disease risk.
+* SHAP values describe how the model uses each feature; they do not show causes.
+* SHAP values were computed on 61 test patients, so rankings beyond the top few are noisy.
+* Value codes for cp, slope and thal are shown as raw codes without clinical interpretation.
+* At threshold 0.5, both the baseline Logistic Regression and tuned Random Forest models missed the exact same test patients (test row indices 18, 19, 27, 31, 37, 42, and 51).
+* The mathematical additivity check passed with a maximum absolute error of 1.332268e-15 (well within the 1e-4 threshold).
+
 ### Evaluation Artifacts
 ![Test Set Confusion Matrix](reports/figures/confusion_matrix.png)
 ![ROC Curve Comparison](reports/figures/roc_curve.png)
-* `[Placeholder: Global SHAP Summary Beeswarm Plot]`
-* `[Placeholder: Exemplar Patient Local SHAP Waterfall Plot]`
+![SHAP Global Summary Beeswarm Plot](reports/figures/shap_summary_plot.png)
+![SHAP 22-Column Feature Importance Bar Plot](reports/figures/shap_bar_plot.png)
+![SHAP 13-Variable Grouped Clinical Importance Bar Plot](reports/figures/shap_bar_grouped.png)
+
+#### Local Patient SHAP Waterfall Explanations
+![High-Risk True Positive Waterfall](reports/figures/shap_waterfall_high_risk.png)
+*High-Risk True Positive: Test Row Index 41, True Label = 1, Predicted Probability = 0.9312*
+
+![Low-Risk True Negative Waterfall](reports/figures/shap_waterfall_low_risk.png)
+*Low-Risk True Negative: Test Row Index 6, True Label = 0, Predicted Probability = 0.1011*
+
+![Missed-Case False Negative Waterfall](reports/figures/shap_waterfall_missed_case.png)
+*Missed-Case False Negative: Test Row Index 18, True Label = 1, Predicted Probability = 0.4630*
 
 ---
 
