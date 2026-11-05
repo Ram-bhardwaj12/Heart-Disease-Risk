@@ -1,0 +1,138 @@
+{
+  "training_samples": 241,
+  "random_state": 42,
+  "cv_folds": 5,
+  "refit_metric": "roc_auc",
+  "models": {
+    "baseline_logistic_regression": {
+      "best_params": {
+        "classifier__C": 0.1
+      },
+      "cv_metrics_at_best_index": {
+        "roc_auc": {
+          "mean": 0.9146076146076145,
+          "std": 0.02914959605092413
+        },
+        "recall": {
+          "mean": 0.7909090909090908,
+          "std": 0.06803013430498077
+        },
+        "precision": {
+          "mean": 0.9160110420979987,
+          "std": 0.08287655921424232
+        },
+        "f1": {
+          "mean": 0.8445564395933086,
+          "std": 0.04655748550573004
+        },
+        "accuracy": {
+          "mean": 0.866921768707483,
+          "std": 0.04126822543621056
+        }
+      },
+      "label_sanity_checks": {
+        "num__thalach_negative": {
+          "value": -0.3024544586982532,
+          "passed": true
+        },
+        "num__oldpeak_positive": {
+          "value": 0.41785629736192215,
+          "passed": true
+        },
+        "bin__exang_positive": {
+          "value": 0.48573510743038845,
+          "passed": true
+        },
+        "all_passed": true
+      }
+    },
+    "candidate_random_forest": {
+      "best_params": {
+        "classifier__max_depth": 3,
+        "classifier__max_features": "sqrt",
+        "classifier__min_samples_leaf": 5,
+        "classifier__n_estimators": 400
+      },
+      "cv_metrics_at_best_index": {
+        "roc_auc": {
+          "mean": 0.9212250712250712,
+          "std": 0.025311283157150845
+        },
+        "recall": {
+          "mean": 0.790909090909091,
+          "std": 0.09791208740244552
+        },
+        "precision": {
+          "mean": 0.8723565062388593,
+          "std": 0.07122170821980611
+        },
+        "f1": {
+          "mean": 0.8226105885680355,
+          "std": 0.04906810825278578
+        },
+        "accuracy": {
+          "mean": 0.8461734693877551,
+          "std": 0.039264542105323354
+        }
+      },
+      "top_10_feature_importances": [
+        {
+          "rank": 1,
+          "feature": "num__ca",
+          "importance": 0.166936
+        },
+        {
+          "rank": 2,
+          "feature": "nom__cp_0.0",
+          "importance": 0.136939
+        },
+        {
+          "rank": 3,
+          "feature": "nom__thal_2.0",
+          "importance": 0.13205
+        },
+        {
+          "rank": 4,
+          "feature": "num__oldpeak",
+          "importance": 0.098726
+        },
+        {
+          "rank": 5,
+          "feature": "nom__thal_3.0",
+          "importance": 0.094808
+        },
+        {
+          "rank": 6,
+          "feature": "bin__exang",
+          "importance": 0.086796
+        },
+        {
+          "rank": 7,
+          "feature": "num__thalach",
+          "importance": 0.07581
+        },
+        {
+          "rank": 8,
+          "feature": "num__age",
+          "importance": 0.044586
+        },
+        {
+          "rank": 9,
+          "feature": "nom__slope_2.0",
+          "importance": 0.035931
+        },
+        {
+          "rank": 10,
+          "feature": "num__chol",
+          "importance": 0.023975
+        }
+      ]
+    }
+  },
+  "environment": {
+    "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "sklearn_version": "1.9.1",
+    "pandas_version": "3.1.1",
+    "numpy_version": "2.4.6"
+  }
+}

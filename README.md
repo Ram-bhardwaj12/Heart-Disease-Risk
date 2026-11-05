@@ -369,7 +369,7 @@ Open your web browser and navigate to `http://localhost:8501`.
 - [x] **Phase 1:** Data loading, schema validation, and deduplication audit
 - [ ] **Phase 2:** Exploratory data analysis & statistical correlation reporting
 - [x] **Phase 3:** Feature encoding, scaling, and stratified train/test split
-- [ ] **Phase 4:** Baseline Logistic Regression & tuned Random Forest training
+- [x] **Phase 4:** Baseline Logistic Regression & tuned Random Forest training
 - [ ] **Phase 5:** Model evaluation with recall, ROC-AUC, and confusion matrix benchmarking
 - [ ] **Phase 6:** Global and local SHAP explainability visualizations
 - [ ] **Phase 7:** Streamlit interactive dashboard development and validation
