@@ -19,3 +19,4 @@ TARGET_COL = "target"
 # Feature Subsets
 NUMERIC_FEATURES = ["age", "trestbps", "chol", "thalach", "oldpeak"]
 CATEGORICAL_FEATURES = ["sex", "cp", "fbs", "restecg", "exang", "slope", "ca", "thal"]
+
