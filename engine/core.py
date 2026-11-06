@@ -20,6 +20,7 @@ from engine.content import (
     FIELD_GROUPS,
     FIELD_METADATA,
     OPTIONAL_FIELDS,
+    OPTION_DISPLAY_ORDER,
     PRODUCT_NAME,
     REQUIRED_FIELDS,
     TAGLINE,
@@ -210,6 +211,10 @@ def get_feature_specs() -> dict[str, dict[str, Any]]:
 
         if col in CATEGORICAL_FEATURES:
             raw_options = sorted([int(x) for x in valid_series.unique()])
+            preferred_order = OPTION_DISPLAY_ORDER.get(col)
+            if preferred_order:
+                order_map = {val: idx for idx, val in enumerate(preferred_order)}
+                raw_options.sort(key=lambda x: order_map.get(x, 999))
             mode_val = int(valid_series.mode().iloc[0])
             options_list = [
                 {"value": opt, "label": CODE_LABELS.get(col, {}).get(opt, str(opt))}

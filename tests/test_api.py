@@ -52,6 +52,15 @@ def test_schema_endpoint():
     age_spec = next(f for f in data["fields"] if f["key"] == "age")
     assert age_spec["optional"] is False
 
+    # Check option display order and labels
+    specs = {f["key"]: f for f in data["fields"]}
+    assert [o["value"] for o in specs["cp"]["options"]] == [3, 1, 2, 0]
+    assert specs["cp"]["options"][3]["label"] == "Asymptomatic (no chest pain symptoms)"
+    assert [o["value"] for o in specs["restecg"]["options"]] == [1, 2, 0]
+    assert [o["value"] for o in specs["slope"]["options"]] == [2, 1, 0]
+    assert [o["value"] for o in specs["thal"]["options"]] == [2, 1, 3]
+    assert [o["value"] for o in specs["sex"]["options"]] == [0, 1]
+
 
 def test_predict_endpoint_success_and_equivalence():
     """Test POST /api/predict for all 61 test rows matches engine and direct predict_proba within 1e-12."""
@@ -90,12 +99,22 @@ def test_predict_endpoint_success_and_equivalence():
         assert 0.0 <= body["score_percent"] <= 100.0
         assert set(body["tier"].keys()) == {"key", "label", "text"}
         assert body["tier"]["key"] in {"lower", "moderate", "higher"}
+        assert body["tier"]["text"] in {
+            "Your answers match patterns the model more often saw in people without heart disease.",
+            "Your answers sit between the two cut-offs, so the model does not lean clearly either way.",
+            "Your answers match patterns the model more often saw in people with heart disease.",
+        }
         assert set(body["cutoffs"].keys()) == {"low", "high"}
         assert isinstance(body["warnings"], list)
         assert isinstance(body["missing_used"], list)
         assert len(body["contributions"]) == 13
         assert len(body["top_raising"]) <= 3
         assert len(body["top_lowering"]) <= 3
+
+        for item in body["top_raising"]:
+            assert item["amount"] >= 0.01
+        for item in body["top_lowering"]:
+            assert abs(item["amount"]) >= 0.01
 
         for item in body["contributions"]:
             assert set(item.keys()) == {"key", "label", "short_label", "value_display", "amount", "direction"}
@@ -110,7 +129,10 @@ def test_predict_endpoint_success_and_equivalence():
         summary = body["summary"]
         short_labels = [f["short_label"] for f in engine.get_feature_specs().values()]
         matched_labels = [lbl for lbl in short_labels if lbl in summary]
-        assert len(matched_labels) >= 2, f"Summary did not contain >= 2 field labels: {summary}"
+        if "No single answer moved the score by more than one percentage point." in summary:
+            assert len(body["top_raising"]) == 0 and len(body["top_lowering"]) == 0
+        else:
+            assert len(matched_labels) >= 1, f"Summary did not contain field labels: {summary}"
 
         # No two consecutive bracket groups
         assert not re.search(r"\)\s*\(", summary), f"Two consecutive bracket groups found in summary: {summary}"

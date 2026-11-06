@@ -241,6 +241,56 @@ def test_what_if_curve_properties():
         assert abs(curve_score_at_curr - expected_score) < 1e-9
 
 
+def test_tier_plain_language_texts():
+    """Verify exact plain-language text for tiers."""
+    assert engine.risk_tier(0.20)["text"] == "Your answers match patterns the model more often saw in people without heart disease."
+    assert engine.risk_tier(0.35)["text"] == "Your answers sit between the two cut-offs, so the model does not lean clearly either way."
+    assert engine.risk_tier(0.60)["text"] == "Your answers match patterns the model more often saw in people with heart disease."
+
+
+def test_option_display_order_and_labels():
+    """Verify options are returned in preferred clinical display order."""
+    specs = engine.get_feature_specs()
+    assert [opt["value"] for opt in specs["cp"]["options"]] == [3, 1, 2, 0]
+    assert specs["cp"]["options"][3]["label"] == "Asymptomatic (no chest pain symptoms)"
+    assert [opt["value"] for opt in specs["restecg"]["options"]] == [1, 2, 0]
+    assert [opt["value"] for opt in specs["slope"]["options"]] == [2, 1, 0]
+    assert [opt["value"] for opt in specs["thal"]["options"]] == [2, 1, 3]
+    assert [opt["value"] for opt in specs["sex"]["options"]] == [0, 1]
+
+
+def test_summary_threshold_filtering():
+    """Verify answers count as raised/lowered only if absolute amount is >= 0.01."""
+    tier_info = engine.risk_tier(0.25)
+    # Case 1: no contribution reaches 0.01
+    tiny_contribs = [
+        {"key": "age", "label": "Age", "short_label": "Age", "value_display": "50", "amount": 0.005, "direction": "raised"},
+        {"key": "sex", "label": "Sex", "short_label": "Sex", "value_display": "Male", "amount": -0.008, "direction": "lowered"},
+    ]
+    summary1 = content.build_summary(0.25, tier_info, tiny_contribs)
+    assert "No single answer moved the score by more than one percentage point." in summary1
+    assert "Answers that raised" not in summary1
+    assert "Answers that lowered" not in summary1
+
+    # Case 2: only raising >= 0.01
+    raising_only = [
+        {"key": "age", "label": "Age", "short_label": "Age", "value_display": "50", "amount": 0.05, "direction": "raised"},
+        {"key": "sex", "label": "Sex", "short_label": "Sex", "value_display": "Male", "amount": -0.005, "direction": "lowered"},
+    ]
+    summary2 = content.build_summary(0.25, tier_info, raising_only)
+    assert "Answers that raised the score most:" in summary2
+    assert "Answers that lowered it most:" not in summary2
+
+    # Case 3: only lowering <= -0.01
+    lowering_only = [
+        {"key": "age", "label": "Age", "short_label": "Age", "value_display": "50", "amount": 0.005, "direction": "raised"},
+        {"key": "sex", "label": "Sex", "short_label": "Sex", "value_display": "Male", "amount": -0.06, "direction": "lowered"},
+    ]
+    summary3 = content.build_summary(0.25, tier_info, lowering_only)
+    assert "Answers that lowered it most:" in summary3
+    assert "Answers that raised the score most:" not in summary3
+
+
 def test_no_forbidden_wording_in_summaries():
     """(h) Test that no forbidden words ('you have', 'diagnosis of', 'you are at risk'), no double brackets, and no 'Option' appear."""
     test_df = engine.load_test_features()

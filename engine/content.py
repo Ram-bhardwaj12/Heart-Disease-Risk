@@ -10,17 +10,17 @@ TIERS = {
     "lower": {
         "key": "lower",
         "label": "Lower",
-        "text": "Score is below the screening threshold.",
+        "text": "Your answers match patterns the model more often saw in people without heart disease.",
     },
     "moderate": {
         "key": "moderate",
         "label": "Moderate",
-        "text": "Score is between the screening threshold and 0.50.",
+        "text": "Your answers sit between the two cut-offs, so the model does not lean clearly either way.",
     },
     "higher": {
         "key": "higher",
         "label": "Higher",
-        "text": "Score is at or above 0.50.",
+        "text": "Your answers match patterns the model more often saw in people with heart disease.",
     },
 }
 
@@ -35,7 +35,7 @@ INFERRED_CODES_NOTE = (
 CODE_LABELS = {
     "sex": {0: "Female", 1: "Male"},
     "cp": {
-        0: "Asymptomatic (no chest pain)",
+        0: "Asymptomatic (no chest pain symptoms)",
         1: "Atypical angina",
         2: "Non-anginal pain",
         3: "Typical angina",
@@ -58,6 +58,14 @@ CODE_LABELS = {
     "fbs": {0: "No", 1: "Yes"},
     "exang": {0: "No", 1: "Yes"},
     "ca": {0: "0", 1: "1", 2: "2", 3: "3"},
+}
+
+OPTION_DISPLAY_ORDER = {
+    "cp": [3, 1, 2, 0],
+    "restecg": [1, 2, 0],
+    "slope": [2, 1, 0],
+    "thal": [2, 1, 3],
+    "sex": [0, 1],
 }
 
 FIELD_GROUPS = {
@@ -224,7 +232,9 @@ def build_summary(
 
     Template:
     'The model gives a {tier label} score ({percent}%). Answers that raised the score most: {label} ({value_display}), {label} ({value_display}). Answers that lowered it most: {label} ({value_display}).'
-    Omit the last sentence if nothing lowered the score. Neutral wording only.
+    An answer counts as 'raised' or 'lowered' only if its absolute amount is >= 0.01.
+    If nothing qualifies on one side, omit that sentence.
+    If nothing qualifies on either side: 'No single answer moved the score by more than one percentage point.'
     """
     pct = round(score * 100.0, 1)
     if isinstance(tier, dict):
@@ -239,36 +249,51 @@ def build_summary(
         elif not isinstance(items, list):
             items = list(items)
 
-        r_all = [c for c in items if (c.get("amount") if "amount" in c else c.get("shap_amount", 0.0)) > 0]
+        r_all = [
+            c for c in items
+            if (c.get("amount") if "amount" in c else c.get("shap_amount", 0.0)) >= 0.01
+        ]
         r_all.sort(
             key=lambda x: (x.get("amount") if "amount" in x else x.get("shap_amount", 0.0)),
             reverse=True,
         )
         raising = r_all[:3]
 
-        l_all = [c for c in items if (c.get("amount") if "amount" in c else c.get("shap_amount", 0.0)) < 0]
+        l_all = [
+            c for c in items
+            if (c.get("amount") if "amount" in c else c.get("shap_amount", 0.0)) <= -0.01
+        ]
         l_all.sort(
             key=lambda x: abs(x.get("amount") if "amount" in x else x.get("shap_amount", 0.0)),
             reverse=True,
         )
         lowering = l_all[:3]
     else:
-        raising = top_raising_or_contributions
-        lowering = top_lowering
+        raising = [
+            c for c in top_raising_or_contributions
+            if (c.get("amount") if "amount" in c else c.get("shap_amount", 0.0)) >= 0.01
+        ]
+        lowering = [
+            c for c in top_lowering
+            if abs(c.get("amount") if "amount" in c else c.get("shap_amount", 0.0)) >= 0.01
+        ]
 
     sentence = f"The model gives a {tier_label} score ({pct}%)."
-    if raising:
-        r_parts = [
-            f"{item.get('short_label', item['label'])} ({item['value_display']})"
-            for item in raising[:2]
-        ]
-        sentence += f" Answers that raised the score most: {', '.join(r_parts)}."
-    if lowering:
-        l_parts = [
-            f"{item.get('short_label', item['label'])} ({item['value_display']})"
-            for item in lowering[:1]
-        ]
-        sentence += f" Answers that lowered it most: {', '.join(l_parts)}."
+    if not raising and not lowering:
+        sentence += " No single answer moved the score by more than one percentage point."
+    else:
+        if raising:
+            r_parts = [
+                f"{item.get('short_label', item['label'])} ({item['value_display']})"
+                for item in raising[:2]
+            ]
+            sentence += f" Answers that raised the score most: {', '.join(r_parts)}."
+        if lowering:
+            l_parts = [
+                f"{item.get('short_label', item['label'])} ({item['value_display']})"
+                for item in lowering[:1]
+            ]
+            sentence += f" Answers that lowered it most: {', '.join(l_parts)}."
 
     return sentence
 

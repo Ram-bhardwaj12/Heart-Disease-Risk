@@ -180,11 +180,11 @@ def predict_endpoint(payload: PredictPayload):
         })
     contributions.sort(key=lambda x: abs(x["amount"]), reverse=True)
 
-    raising = [c for c in contributions if c["direction"] == "raised"]
+    raising = [c for c in contributions if c["direction"] == "raised" and c["amount"] >= 0.01]
     raising.sort(key=lambda x: x["amount"], reverse=True)
     top_raising = raising[:3]
 
-    lowering = [c for c in contributions if c["direction"] == "lowered"]
+    lowering = [c for c in contributions if c["direction"] == "lowered" and abs(c["amount"]) >= 0.01]
     lowering.sort(key=lambda x: abs(x["amount"]), reverse=True)
     top_lowering = lowering[:3]
 
