@@ -1,0 +1,270 @@
+"""API endpoint integration tests using fastapi.testclient.TestClient."""
+
+from pathlib import Path
+import numpy as np
+import pytest
+from fastapi.testclient import TestClient
+
+from api.main import app
+import engine.core as engine
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+client = TestClient(app)
+
+
+def test_health_endpoint():
+    """Test GET /api/health returns status ok."""
+    resp = client.get("/api/health")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}
+
+
+def test_schema_endpoint():
+    """Test GET /api/schema returns 13 fields and correct metadata."""
+    resp = client.get("/api/schema")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    assert data["product_name"] == "CardioLens"
+    assert "tagline" in data
+    assert "disclaimer" in data
+    assert "cutoffs" in data
+    assert data["cutoffs"]["low"] == 0.3
+    assert data["cutoffs"]["high"] == 0.5
+    assert data["unverified_codes"] == ["cp", "restecg", "slope", "thal"]
+    assert len(data["fields"]) == 13
+
+    # Check key features present
+    field_keys = [f["key"] for f in data["fields"]]
+    assert "age" in field_keys
+    assert "ca" in field_keys
+    assert "thal" in field_keys
+
+    ca_spec = next(f for f in data["fields"] if f["key"] == "ca")
+    assert ca_spec["optional"] is True
+    age_spec = next(f for f in data["fields"] if f["key"] == "age")
+    assert age_spec["optional"] is False
+
+
+def test_predict_endpoint_success_and_equivalence():
+    """Test POST /api/predict for all 61 test rows matches engine within 1e-12."""
+    import numpy as np
+
+    test_df = engine.load_test_features()
+
+    for idx in range(len(test_df)):
+        sample = test_df.iloc[idx].to_dict()
+        clean_sample = {
+            k: (None if (isinstance(v, float) and np.isnan(v)) else v)
+            for k, v in sample.items()
+        }
+        resp = client.post("/api/predict", json={"inputs": clean_sample})
+        assert resp.status_code == 200, f"Predict failed on row {idx}: {resp.text}"
+
+        body = resp.json()
+        assert "score" in body
+        assert "score_percent" in body
+        assert "tier" in body
+        assert "contributions" in body
+        assert len(body["contributions"]) == 13
+        assert "summary" in body
+        assert "base_value" in body
+        assert "disclaimer" in body
+
+        engine_score = engine.predict_score(sample)
+        assert abs(body["score"] - engine_score) < 1e-12, f"Row {idx} score mismatch with engine"
+
+
+def test_predict_endpoint_optional_fields_and_warnings():
+    """Test POST /api/predict with omitted ca/thal and out-of-range warnings."""
+    test_df = engine.load_test_features()
+    sample = test_df.iloc[0].to_dict()
+
+    # Omit ca and thal
+    sample_no_opt = {k: v for k, v in sample.items() if k not in ["ca", "thal"]}
+    sample_no_opt["age"] = 120.0  # Trigger warning
+
+    resp = client.post("/api/predict", json={"inputs": sample_no_opt})
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert set(body["missing_used"]) == {"ca", "thal"}
+    assert len(body["warnings"]) > 0
+    assert any("Age" in w for w in body["warnings"])
+
+
+def test_predict_endpoint_422_validations():
+    """Test POST /api/predict returns 422 for invalid inputs and extra fields."""
+    test_df = engine.load_test_features()
+    valid_sample = test_df.iloc[0].to_dict()
+
+    # 1. Missing required field
+    bad_sample_1 = {k: v for k, v in valid_sample.items() if k != "age"}
+    resp = client.post("/api/predict", json={"inputs": bad_sample_1})
+    assert resp.status_code == 422
+
+    # 2. String in numeric field
+    bad_sample_2 = dict(valid_sample, trestbps="one-twenty")
+    resp = client.post("/api/predict", json={"inputs": bad_sample_2})
+    assert resp.status_code == 422
+
+    # 3. Unseen categorical code
+    bad_sample_3 = dict(valid_sample, cp=99)
+    resp = client.post("/api/predict", json={"inputs": bad_sample_3})
+    assert resp.status_code == 422
+
+    # 4. Extra payload field (forbid extra)
+    resp = client.post("/api/predict", json={"inputs": valid_sample, "unrecognized_key": 123})
+    assert resp.status_code == 422
+
+
+def test_whatif_endpoint_success_and_rejection():
+    """Test POST /api/whatif computes sensitivity curve and rejects categorical features."""
+    test_df = engine.load_test_features()
+    sample = test_df.iloc[0].to_dict()
+
+    # 1. Valid continuous numeric feature
+    resp = client.post(
+        "/api/whatif",
+        json={"inputs": sample, "feature": "thalach", "n_points": 25},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["feature"] == "thalach"
+    assert len(data["curve"]) == 25
+    assert "current_value" in data
+    assert "current_score" in data
+    assert "cutoffs" in data
+
+    # 2. Reject categorical feature (cp) with 422
+    resp_bad = client.post(
+        "/api/whatif",
+        json={"inputs": sample, "feature": "cp", "n_points": 25},
+    )
+    assert resp_bad.status_code == 422
+
+    # 3. Reject discrete count feature (ca) with 422
+    resp_ca = client.post(
+        "/api/whatif",
+        json={"inputs": sample, "feature": "ca", "n_points": 25},
+    )
+    assert resp_ca.status_code == 422
+
+
+def test_model_info_endpoint():
+    """Test GET /api/model-info retrieves reports without hard-coding."""
+    resp = client.get("/api/model-info")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    audit = engine.load_data_audit_summary()
+
+    assert "dataset_facts" in data
+    assert data["dataset_facts"]["raw_rows"] == audit["raw_rows"]
+    assert data["dataset_facts"]["unique_rows"] == audit["unique_rows"]
+    assert "cross_validation" in data
+    assert "held_out_test" in data
+    assert "confusion_matrices" in data
+    assert "random_forest_minus_logistic_regression" in data
+    assert "top_5_grouped_shap" in data
+    assert len(data["top_5_grouped_shap"]) == 5
+    assert "figure_urls" in data
+    assert len(data["figure_urls"]) > 0
+
+
+def test_figures_and_path_traversal_protection():
+    """Test GET /figures allows legitimate figures and rejects path traversal."""
+    # Legitimate figure request
+    resp = client.get("/figures/confusion_matrix.png")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "image/png"
+
+    # Path traversal attempts
+    traversal_attacks = [
+        "/figures/..%2fREADME.md",
+        "/figures/%2e%2e/README.md",
+        "/figures/..%2f..%2f..%2fetc/passwd",
+        "/figures/../app/app.py",
+        "/figures/sub/dir/test.png",
+        "/figures/nonexistent.png",
+    ]
+    for attack in traversal_attacks:
+        bad_resp = client.get(attack)
+        assert bad_resp.status_code == 404, f"Attack did not yield 404: {attack}"
+
+
+def test_request_body_size_limit():
+    """Test request body size limit enforces 20 KB limit with HTTP 413."""
+    # Valid payload size (< 20 KB)
+    test_df = engine.load_test_features()
+    sample = test_df.iloc[0].to_dict()
+    clean_sample = {k: (None if (isinstance(v, float) and np.isnan(v)) else v) for k, v in sample.items()}
+    resp_ok = client.post("/api/predict", json={"inputs": clean_sample})
+    assert resp_ok.status_code == 200
+
+    # Oversized payload (> 20 KB)
+    large_garbage = "x" * (25 * 1024)
+    resp_large = client.post(
+        "/api/predict",
+        content=large_garbage,
+        headers={"Content-Type": "application/json", "Content-Length": str(len(large_garbage))},
+    )
+    assert resp_large.status_code == 413
+
+
+def test_security_headers_and_cache_control():
+    """Test required security headers and Cache-Control: no-store on API endpoints."""
+    resp = client.get("/api/health")
+    assert resp.status_code == 200
+
+    assert resp.headers.get("Cache-Control") == "no-store"
+    assert resp.headers.get("X-Content-Type-Options") == "nosniff"
+    assert resp.headers.get("Referrer-Policy") == "no-referrer"
+    assert resp.headers.get("X-Frame-Options") == "DENY"
+    expected_csp = (
+        "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'"
+    )
+    assert resp.headers.get("Content-Security-Policy") == expected_csp
+
+
+def test_zero_disk_writes_during_requests():
+    """Verify that 20 diverse API requests do not write or modify any files on disk."""
+    ignored = {"venv", ".git", ".pytest_cache", "__pycache__", ".idea", ".vscode"}
+
+    def get_repo_file_manifest():
+        manifest = {}
+        for child in REPO_ROOT.iterdir():
+            if child.name in ignored:
+                continue
+            if child.is_file():
+                manifest[child.name] = child.stat().st_mtime_ns
+            elif child.is_dir():
+                for p in child.rglob("*"):
+                    if p.is_file() and not any(part in ignored for part in p.parts):
+                        manifest[str(p.relative_to(REPO_ROOT))] = p.stat().st_mtime_ns
+        return manifest
+
+    before = get_repo_file_manifest()
+
+    test_df = engine.load_test_features()
+    sample = test_df.iloc[0].to_dict()
+    clean_sample = {k: (None if (isinstance(v, float) and np.isnan(v)) else v) for k, v in sample.items()}
+
+    # Execute 20 requests
+    for _ in range(4):
+        client.get("/api/health")
+        client.get("/api/schema")
+        client.post("/api/predict", json={"inputs": clean_sample})
+        client.post("/api/whatif", json={"inputs": clean_sample, "feature": "age"})
+        client.get("/api/model-info")
+
+    after = get_repo_file_manifest()
+
+    # Compare manifests
+    new_files = set(after.keys()) - set(before.keys())
+    assert len(new_files) == 0, f"New files created on disk during requests: {new_files}"
+
+    modified_files = [
+        f for f in before if f in after and before[f] != after[f]
+    ]
+    assert len(modified_files) == 0, f"Files modified on disk during requests: {modified_files}"
