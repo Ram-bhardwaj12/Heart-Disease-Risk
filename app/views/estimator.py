@@ -220,7 +220,7 @@ with tab_res:
     with col_info:
         st.markdown(
             f"""
-            <div class="card" style="height:100%;">
+            <div class="card">
                 <div style="font-size:0.9rem; color:#5B6B7F; text-transform:uppercase; font-weight:600; margin-bottom:8px;">Assessment Summary</div>
                 <p style="font-size:0.95rem; line-height:1.5; color:#0F1B2D; margin-bottom:8px;">{summary_sentence}</p>
                 <div style="font-size:0.8rem; color:#5B6B7F;">{COPY['CALIBRATION_NOTE']}</div>
@@ -364,10 +364,6 @@ with tab_wi:
     f_spec = specs[chosen_feature]
     col_sl, col_delta = st.columns([2, 1])
 
-    if st.session_state.get("_prev_wi_val_key") != (chosen_feature, curr_val):
-        st.session_state["what_if_trial_slider"] = curr_val
-        st.session_state["_prev_wi_val_key"] = (chosen_feature, curr_val)
-
     with col_sl:
         alt_val = st.slider(
             COPY["WHAT_IF_SLIDER_LABEL"].format(feature=DISPLAY_LABELS.get(chosen_feature, chosen_feature)),
@@ -375,7 +371,7 @@ with tab_wi:
             max_value=float(f_spec["max"]),
             value=curr_val,
             step=float(f_spec["step"]),
-            key="what_if_trial_slider",
+            key=f"what_if_slider_{chosen_feature}",
         )
 
     # Compute counterfactual score on copy of inputs (never mutating sidebar)

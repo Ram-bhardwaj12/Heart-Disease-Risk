@@ -62,9 +62,11 @@ def render_tier_pill(tier_name: str) -> None:
         label = "High Risk"
 
     pill_html = f"""
-    <div class="pill {pill_class}">
-        <span>{symbol}</span>
-        <span>{label}</span>
+    <div style="margin-top: 6px;">
+        <span class="pill {pill_class}">
+            <span>{symbol}</span>
+            <span>{label}</span>
+        </span>
     </div>
     """
     st.markdown(pill_html, unsafe_allow_html=True)
@@ -77,10 +79,13 @@ def render_risk_meter(score: float, t_threshold: float, high_threshold: float = 
     mod_pct = max((high_threshold - t_threshold) * 100.0, 1.0)
     high_pct = max((1.0 - high_threshold) * 100.0, 1.0)
 
+    # Keep label within visible bounds so it doesn't get clipped at edges
+    label_left = min(max(pct, 3.5), 96.5)
+
     meter_html = f"""
     <div class="meter">
         <div class="meter-pointer-area">
-            <div class="meter-pointer-label" style="left:{pct:.1f}%;">{pct:.1f}%</div>
+            <div class="meter-pointer-label" style="left:{label_left:.1f}%;">{pct:.1f}%</div>
             <div class="meter-pointer" style="left:{pct:.1f}%;"></div>
         </div>
         <div class="meter-track">
@@ -89,9 +94,9 @@ def render_risk_meter(score: float, t_threshold: float, high_threshold: float = 
             <div class="meter-zone meter-zone-high" style="width:{high_pct:.2f}%;"></div>
         </div>
         <div class="meter-labels">
-            <span>Low Risk (0 – {t_threshold:.2f})</span>
-            <span>Moderate ({t_threshold:.2f} – {high_threshold:.2f})</span>
-            <span>High (≥ {high_threshold:.2f})</span>
+            <div style="width:{low_pct:.2f}%; text-align:left;">0.00 – {t_threshold:.2f} (Low)</div>
+            <div style="width:{mod_pct:.2f}%; text-align:center;">{t_threshold:.2f} – {high_threshold:.2f} (Moderate)</div>
+            <div style="width:{high_pct:.2f}%; text-align:right;">≥ {high_threshold:.2f} (High)</div>
         </div>
     </div>
     """

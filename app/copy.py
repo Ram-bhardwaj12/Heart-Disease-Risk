@@ -76,3 +76,4 @@ COPY = {
     "BTN_DOWNLOAD_HTML": "Download One-Page Report (HTML)",
     "BTN_DOWNLOAD_CSV": "Download Summary (CSV)",
 }
+

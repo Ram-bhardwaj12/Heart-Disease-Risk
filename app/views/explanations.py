@@ -69,23 +69,18 @@ fig_bar_path = REPO_ROOT / "reports" / "figures" / "shap_bar_plot.png"
 fig_summary_path = REPO_ROOT / "reports" / "figures" / "shap_summary_plot.png"
 
 with tab_g1:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
     if fig_bar_grouped_path.exists():
         st.image(Image.open(fig_bar_grouped_path), caption="Grouped Clinical Variable Importance (13 Variables)", use_container_width=True)
     else:
         st.warning(f"Visualization not found: {fig_bar_grouped_path.name}")
-    st.markdown("</div>", unsafe_allow_html=True)
 
 with tab_g2:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
     if fig_bar_path.exists():
         st.image(Image.open(fig_bar_path), caption="Individual Encoding Importance (22 Encodings)", use_container_width=True)
     else:
         st.warning(f"Visualization not found: {fig_bar_path.name}")
-    st.markdown("</div>", unsafe_allow_html=True)
 
 with tab_g3:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
     if fig_summary_path.exists():
         st.image(
             Image.open(fig_summary_path),
@@ -94,6 +89,5 @@ with tab_g3:
         )
     else:
         st.warning(f"Visualization not found: {fig_summary_path.name}")
-    st.markdown("</div>", unsafe_allow_html=True)
 
 render_footer()

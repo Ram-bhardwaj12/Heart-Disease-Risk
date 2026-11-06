@@ -41,7 +41,7 @@ step_col1, step_col2, step_col3, step_col4 = st.columns(4)
 with step_col1:
     st.markdown(
         f"""
-        <div class="card" style="height:100%;">
+        <div class="card">
             <div style="font-size:1.5rem; font-weight:700; color:#0E7C86;">01</div>
             <div style="font-weight:700; margin:6px 0;">Data Audit</div>
             <div style="font-size:0.85rem; color:#5B6B7F; line-height:1.4;">
@@ -55,7 +55,7 @@ with step_col1:
 with step_col2:
     st.markdown(
         f"""
-        <div class="card" style="height:100%;">
+        <div class="card">
             <div style="font-size:1.5rem; font-weight:700; color:#0E7C86;">02</div>
             <div style="font-weight:700; margin:6px 0;">Preprocessing</div>
             <div style="font-size:0.85rem; color:#5B6B7F; line-height:1.4;">
@@ -69,7 +69,7 @@ with step_col2:
 with step_col3:
     st.markdown(
         """
-        <div class="card" style="height:100%;">
+        <div class="card">
             <div style="font-size:1.5rem; font-weight:700; color:#0E7C86;">03</div>
             <div style="font-weight:700; margin:6px 0;">Model Training</div>
             <div style="font-size:0.85rem; color:#5B6B7F; line-height:1.4;">
@@ -83,7 +83,7 @@ with step_col3:
 with step_col4:
     st.markdown(
         """
-        <div class="card" style="height:100%;">
+        <div class="card">
             <div style="font-size:1.5rem; font-weight:700; color:#0E7C86;">04</div>
             <div style="font-weight:700; margin:6px 0;">TreeSHAP XAI</div>
             <div style="font-size:0.85rem; color:#5B6B7F; line-height:1.4;">

@@ -205,21 +205,17 @@ cm_fig_path = REPO_ROOT / "reports" / "figures" / "confusion_matrix.png"
 roc_fig_path = REPO_ROOT / "reports" / "figures" / "roc_curve.png"
 
 with col_fig1:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
     if cm_fig_path.exists():
         img_cm = Image.open(cm_fig_path)
         st.image(img_cm, caption="Confusion Matrix Heatmaps at Default Threshold (0.50)", use_container_width=True)
     else:
         st.warning(f"Diagnostic figure not found: {cm_fig_path.name}")
-    st.markdown("</div>", unsafe_allow_html=True)
 
 with col_fig2:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
     if roc_fig_path.exists():
         img_roc = Image.open(roc_fig_path)
         st.image(img_roc, caption="Receiver Operating Characteristic (ROC) Comparison", use_container_width=True)
     else:
         st.warning(f"Diagnostic figure not found: {roc_fig_path.name}")
-    st.markdown("</div>", unsafe_allow_html=True)
 
 render_footer()
