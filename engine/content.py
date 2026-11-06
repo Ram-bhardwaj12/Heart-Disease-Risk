@@ -24,14 +24,37 @@ TIERS = {
     },
 }
 
-UNVERIFIED_CODES = ["cp", "restecg", "slope", "thal"]
+INFERRED_CODES = ["cp", "restecg", "slope", "thal"]
+UNVERIFIED_CODES = INFERRED_CODES  # Backwards compatibility alias
+INFERRED_CODES_NOTE = (
+    "Labels for chest pain type, resting ECG, ST slope and thallium test were "
+    "inferred by matching the dataset's value counts and disease rates to the "
+    "published Cleveland data; the Kaggle file does not document its encoding."
+)
 
 CODE_LABELS = {
-    "cp": {0: "Option 0", 1: "Option 1", 2: "Option 2", 3: "Option 3"},
-    "restecg": {0: "Option 0", 1: "Option 1", 2: "Option 2"},
-    "slope": {0: "Option 0", 1: "Option 1", 2: "Option 2"},
-    "thal": {1: "Option 1", 2: "Option 2", 3: "Option 3"},
-    "sex": {0: "Option 0", 1: "Option 1"},
+    "sex": {0: "Female", 1: "Male"},
+    "cp": {
+        0: "Asymptomatic (no chest pain)",
+        1: "Atypical angina",
+        2: "Non-anginal pain",
+        3: "Typical angina",
+    },
+    "restecg": {
+        0: "Left ventricular hypertrophy",
+        1: "Normal",
+        2: "ST-T wave abnormality",
+    },
+    "slope": {
+        0: "Downsloping",
+        1: "Flat",
+        2: "Upsloping",
+    },
+    "thal": {
+        1: "Fixed defect",
+        2: "Normal",
+        3: "Reversible defect",
+    },
     "fbs": {0: "No", 1: "Yes"},
     "exang": {0: "No", 1: "Yes"},
     "ca": {0: "0", 1: "1", 2: "2", 3: "3"},
@@ -45,6 +68,7 @@ FIELD_GROUPS = {
 FIELD_METADATA = {
     "age": {
         "label": "Age (years)",
+        "short_label": "Age",
         "help": "Patient age in years.",
         "group": "basic",
         "type": "number",
@@ -53,8 +77,9 @@ FIELD_METADATA = {
         "optional": False,
     },
     "sex": {
-        "label": "Biological sex (code)",
-        "help": "Dataset code for biological sex (Option 0 or Option 1).",
+        "label": "Biological sex",
+        "short_label": "Biological sex",
+        "help": "Biological sex (Female or Male).",
         "group": "basic",
         "type": "choice",
         "unit": "",
@@ -63,6 +88,7 @@ FIELD_METADATA = {
     },
     "trestbps": {
         "label": "Resting blood pressure (mm Hg)",
+        "short_label": "Resting blood pressure",
         "help": "Resting blood pressure in mm Hg measured upon hospital admission.",
         "group": "basic",
         "type": "number",
@@ -72,6 +98,7 @@ FIELD_METADATA = {
     },
     "chol": {
         "label": "Serum cholesterol (mg/dl)",
+        "short_label": "Cholesterol",
         "help": "Serum cholesterol measurement in mg/dl.",
         "group": "basic",
         "type": "number",
@@ -81,6 +108,7 @@ FIELD_METADATA = {
     },
     "fbs": {
         "label": "Fasting blood sugar > 120 mg/dl",
+        "short_label": "Fasting blood sugar",
         "help": "Indicator whether fasting blood sugar exceeds 120 mg/dl.",
         "group": "basic",
         "type": "choice",
@@ -89,8 +117,9 @@ FIELD_METADATA = {
         "optional": False,
     },
     "cp": {
-        "label": "Chest pain type (code)",
-        "help": "Dataset code for chest pain category (Option 0 to Option 3).",
+        "label": "Chest pain type",
+        "short_label": "Chest pain type",
+        "help": "Chest pain category (Asymptomatic, Atypical angina, Non-anginal pain, Typical angina).",
         "group": "report",
         "type": "choice",
         "unit": "",
@@ -98,8 +127,9 @@ FIELD_METADATA = {
         "optional": False,
     },
     "restecg": {
-        "label": "Resting ECG (code)",
-        "help": "Dataset code for resting electrocardiographic result (Option 0 to Option 2).",
+        "label": "Resting ECG",
+        "short_label": "Resting ECG",
+        "help": "Resting electrocardiographic result (Left ventricular hypertrophy, Normal, ST-T wave abnormality).",
         "group": "report",
         "type": "choice",
         "unit": "",
@@ -108,6 +138,7 @@ FIELD_METADATA = {
     },
     "thalach": {
         "label": "Maximum heart rate achieved (bpm)",
+        "short_label": "Maximum heart rate",
         "help": "Maximum heart rate achieved during exercise testing in beats per minute.",
         "group": "report",
         "type": "number",
@@ -117,6 +148,7 @@ FIELD_METADATA = {
     },
     "exang": {
         "label": "Exercise-induced angina",
+        "short_label": "Exercise-induced angina",
         "help": "Indicator whether angina was induced during exercise testing.",
         "group": "report",
         "type": "choice",
@@ -126,6 +158,7 @@ FIELD_METADATA = {
     },
     "oldpeak": {
         "label": "ST depression (mm)",
+        "short_label": "ST depression",
         "help": "ST depression induced by exercise relative to rest in millimeters.",
         "group": "report",
         "type": "number",
@@ -134,8 +167,9 @@ FIELD_METADATA = {
         "optional": False,
     },
     "slope": {
-        "label": "ST slope (code)",
-        "help": "Dataset code for ST slope (Option 0 to Option 2).",
+        "label": "ST slope",
+        "short_label": "ST slope",
+        "help": "ST slope (Downsloping, Flat, Upsloping).",
         "group": "report",
         "type": "choice",
         "unit": "",
@@ -144,6 +178,7 @@ FIELD_METADATA = {
     },
     "ca": {
         "label": "Number of major vessels (0-3)",
+        "short_label": "Number of major vessels",
         "help": "Number of major blood vessels colored by fluoroscopy (0 to 3). Optional field.",
         "group": "report",
         "type": "choice",
@@ -152,8 +187,9 @@ FIELD_METADATA = {
         "optional": True,
     },
     "thal": {
-        "label": "Thal test result (code)",
-        "help": "Dataset code for Thal test result (Option 1 to Option 3). Optional field.",
+        "label": "Thallium stress test result",
+        "short_label": "Thallium stress test result",
+        "help": "Thallium stress test result (Fixed defect, Normal, Reversible defect). Optional field.",
         "group": "report",
         "type": "choice",
         "unit": "",
@@ -222,10 +258,16 @@ def build_summary(
 
     sentence = f"The model gives a {tier_label} score ({pct}%)."
     if raising:
-        r_parts = [f"{item['label']} ({item['value_display']})" for item in raising[:2]]
+        r_parts = [
+            f"{item.get('short_label', item['label'])} ({item['value_display']})"
+            for item in raising[:2]
+        ]
         sentence += f" Answers that raised the score most: {', '.join(r_parts)}."
     if lowering:
-        l_parts = [f"{item['label']} ({item['value_display']})" for item in lowering[:1]]
+        l_parts = [
+            f"{item.get('short_label', item['label'])} ({item['value_display']})"
+            for item in lowering[:1]
+        ]
         sentence += f" Answers that lowered it most: {', '.join(l_parts)}."
 
     return sentence

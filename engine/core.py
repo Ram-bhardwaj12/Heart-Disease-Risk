@@ -62,8 +62,8 @@ class ValidationResult(NamedTuple):
     """Validation outcome holding status, errors, warnings, cleaned inputs, and missing keys."""
 
     is_valid: bool
-    errors: list[str]
-    warnings: list[str]
+    errors: list[dict[str, str]]
+    warnings: list[dict[str, str]]
     cleaned_inputs: dict[str, Any]
     missing_used: list[str]
 
@@ -218,6 +218,7 @@ def get_feature_specs() -> dict[str, dict[str, Any]]:
             specs[col] = {
                 "key": col,
                 "label": label,
+                "short_label": meta.get("short_label", label),
                 "help": help_text,
                 "group": group,
                 "type": "choice",
@@ -238,6 +239,7 @@ def get_feature_specs() -> dict[str, dict[str, Any]]:
             specs[col] = {
                 "key": col,
                 "label": label,
+                "short_label": meta.get("short_label", label),
                 "help": help_text,
                 "group": group,
                 "type": field_type,
@@ -278,8 +280,8 @@ def validate_inputs(inputs: Any) -> ValidationResult:
     df_train = load_train_features()
     expected_cols = df_train.columns.tolist()
 
-    errors: list[str] = []
-    warnings: list[str] = []
+    errors: list[dict[str, str]] = []
+    warnings: list[dict[str, str]] = []
     cleaned: dict[str, Any] = {}
     missing_used: list[str] = []
 
@@ -294,6 +296,7 @@ def validate_inputs(inputs: Any) -> ValidationResult:
 
     for col in expected_cols:
         is_optional = col in OPTIONAL_FIELDS
+        short_lbl = FIELD_METADATA.get(col, {}).get("short_label", col).lower()
 
         # 1. Missing key check
         if col not in inputs_dict:
@@ -301,7 +304,10 @@ def validate_inputs(inputs: Any) -> ValidationResult:
                 missing_used.append(col)
                 cleaned[col] = np.nan
                 continue
-            errors.append(f"Missing required input feature: '{col}'")
+            errors.append({
+                "field": col,
+                "message": f"Please enter a value for {short_lbl}.",
+            })
             continue
 
         raw_val = inputs_dict[col]
@@ -317,49 +323,93 @@ def validate_inputs(inputs: Any) -> ValidationResult:
                 missing_used.append(col)
                 cleaned[col] = np.nan
                 continue
-            errors.append(f"Feature '{col}' cannot be missing or NaN.")
+            errors.append({
+                "field": col,
+                "message": f"Please enter a value for {short_lbl}.",
+            })
             continue
 
         # 3. Numeric conversion check
         try:
             val_float = float(raw_val)
             if np.isnan(val_float) or np.isinf(val_float):
-                errors.append(f"Feature '{col}' has invalid non-finite value: {raw_val}")
+                errors.append({
+                    "field": col,
+                    "message": f"Please enter a valid number for {short_lbl}.",
+                })
                 continue
         except (ValueError, TypeError):
-            errors.append(
-                f"Feature '{col}' must be numeric; got {type(raw_val).__name__} ({raw_val!r})"
-            )
+            errors.append({
+                "field": col,
+                "message": f"Please enter a valid number for {short_lbl}.",
+            })
             continue
 
         # 4. Categorical validation
         if col in CATEGORICAL_FEATURES:
             if not float(val_float).is_integer():
-                errors.append(f"Categorical feature '{col}' must be an integer code; got {val_float}")
+                errors.append({
+                    "field": col,
+                    "message": f"Please select a valid option for {short_lbl}.",
+                })
             else:
                 int_code = int(val_float)
                 if int_code not in valid_categories[col]:
-                    allowed_str = ", ".join(str(c) for c in sorted(valid_categories[col]))
-                    errors.append(
-                        f"Categorical feature '{col}' has unseen category {int_code}. Allowed values: [{allowed_str}]."
-                    )
+                    errors.append({
+                        "field": col,
+                        "message": f"Please select a valid option for {short_lbl}.",
+                    })
                 else:
                     cleaned[col] = float(int_code)
 
         # 5. Continuous numeric validation
         elif col in CONTINUOUS_NUMERIC_FEATURES:
             min_plausible, max_plausible = PLAUSIBLE_LIMITS[col]
-            disp_label = FIELD_METADATA.get(col, {}).get("label", col)
+            min_p_int = int(min_plausible) if min_plausible.is_integer() else min_plausible
+            max_p_int = int(max_plausible) if max_plausible.is_integer() else max_plausible
+
             if val_float < min_plausible or val_float > max_plausible:
-                errors.append(
-                    f"Feature '{col}' ({disp_label}) value {val_float} is outside plausible physiological limits [{min_plausible}, {max_plausible}]."
-                )
+                if col == "age":
+                    msg = f"Enter an age between {min_p_int} and {max_p_int}."
+                elif col == "trestbps":
+                    msg = f"Enter a resting blood pressure between {min_p_int} and {max_p_int}."
+                elif col == "chol":
+                    msg = f"Enter a cholesterol level between {min_p_int} and {max_p_int}."
+                elif col == "thalach":
+                    msg = f"Enter a maximum heart rate between {min_p_int} and {max_p_int}."
+                elif col == "oldpeak":
+                    msg = f"Enter an ST depression between {min_p_int} and {max_p_int}."
+                else:
+                    msg = f"Enter a {short_lbl} between {min_p_int} and {max_p_int}."
+
+                errors.append({
+                    "field": col,
+                    "message": msg,
+                })
             else:
                 min_train, max_train = train_ranges[col]
                 if val_float < min_train or val_float > max_train:
-                    warnings.append(
-                        f"Feature '{col}' ({disp_label}) value {val_float} is outside the training data range [{min_train:.1f}, {max_train:.1f}]."
-                    )
+                    val_disp = int(round(val_float)) if col != "oldpeak" else f"{val_float:.1f}"
+                    min_t_disp = int(round(min_train)) if col != "oldpeak" else f"{min_train:.1f}"
+                    max_t_disp = int(round(max_train)) if col != "oldpeak" else f"{max_train:.1f}"
+
+                    if col == "age":
+                        msg = f"An age of {val_disp} is outside the range the model learned from ({min_t_disp} to {max_t_disp}), so the score may be less reliable."
+                    elif col == "trestbps":
+                        msg = f"A resting blood pressure of {val_disp} is outside the range the model learned from ({min_t_disp} to {max_t_disp}), so the score may be less reliable."
+                    elif col == "chol":
+                        msg = f"A cholesterol level of {val_disp} is outside the range the model learned from ({min_t_disp} to {max_t_disp}), so the score may be less reliable."
+                    elif col == "thalach":
+                        msg = f"A maximum heart rate of {val_disp} is outside the range the model learned from ({min_t_disp} to {max_t_disp}), so the score may be less reliable."
+                    elif col == "oldpeak":
+                        msg = f"An ST depression of {val_disp} is outside the range the model learned from ({min_t_disp} to {max_t_disp}), so the score may be less reliable."
+                    else:
+                        msg = f"A value of {val_disp} for {short_lbl} is outside the range the model learned from ({min_t_disp} to {max_t_disp}), so the score may be less reliable."
+
+                    warnings.append({
+                        "field": col,
+                        "message": msg,
+                    })
                 cleaned[col] = float(val_float)
 
     is_valid = len(errors) == 0
@@ -400,7 +450,8 @@ def predict_score(inputs: Any) -> float:
     """
     val_res = validate_inputs(inputs)
     if not val_res.is_valid:
-        raise ValueError(f"Invalid inputs: {'; '.join(val_res.errors)}")
+        error_msgs = [e["message"] if isinstance(e, dict) else str(e) for e in val_res.errors]
+        raise ValueError(f"Invalid inputs: {'; '.join(error_msgs)}")
 
     df_train = load_train_features()
     expected_cols = df_train.columns.tolist()
@@ -422,7 +473,8 @@ def explain_columns(inputs: Any) -> pd.DataFrame:
     """Compute TreeSHAP attributions for all 22 preprocessed encoded feature columns."""
     val_res = validate_inputs(inputs)
     if not val_res.is_valid:
-        raise ValueError(f"Invalid inputs: {'; '.join(val_res.errors)}")
+        error_msgs = [e["message"] if isinstance(e, dict) else str(e) for e in val_res.errors]
+        raise ValueError(f"Invalid inputs: {'; '.join(error_msgs)}")
 
     df_train = load_train_features()
     expected_cols = df_train.columns.tolist()
@@ -479,7 +531,8 @@ def explain_grouped(inputs: Any) -> pd.DataFrame:
     """
     val_res = validate_inputs(inputs)
     if not val_res.is_valid:
-        raise ValueError(f"Invalid inputs: {'; '.join(val_res.errors)}")
+        error_msgs = [e["message"] if isinstance(e, dict) else str(e) for e in val_res.errors]
+        raise ValueError(f"Invalid inputs: {'; '.join(error_msgs)}")
 
     df_train = load_train_features()
     expected_cols = df_train.columns.tolist()
@@ -521,6 +574,7 @@ def explain_grouped(inputs: Any) -> pd.DataFrame:
         val_entered = val_res.cleaned_inputs.get(f, np.nan)
         meta = FIELD_METADATA.get(f, {})
         label = meta.get("label", f)
+        short_label = meta.get("short_label", label)
 
         if np.isnan(val_entered):
             value_display = "Not provided"
@@ -538,6 +592,7 @@ def explain_grouped(inputs: Any) -> pd.DataFrame:
             "feature": f,
             "key": f,
             "label": label,
+            "short_label": short_label,
             "value_entered": val_entered,
             "value_display": value_display,
             "shap_amount": feature_shap,
@@ -563,7 +618,8 @@ def what_if_curve(inputs: Any, feature: str, n_points: int = 25) -> pd.DataFrame
     """Generate sensitivity curve by varying one continuous numeric feature across training range."""
     val_res = validate_inputs(inputs)
     if not val_res.is_valid:
-        raise ValueError(f"Invalid inputs: {'; '.join(val_res.errors)}")
+        error_msgs = [e["message"] if isinstance(e, dict) else str(e) for e in val_res.errors]
+        raise ValueError(f"Invalid inputs: {'; '.join(error_msgs)}")
 
     if feature not in CONTINUOUS_NUMERIC_FEATURES:
         raise ValueError(
@@ -610,7 +666,8 @@ def tree_agreement(inputs: Any) -> tuple[np.ndarray, float, float]:
     """Compute individual tree predictions and consensus statistics across Random Forest."""
     val_res = validate_inputs(inputs)
     if not val_res.is_valid:
-        raise ValueError(f"Invalid inputs: {'; '.join(val_res.errors)}")
+        error_msgs = [e["message"] if isinstance(e, dict) else str(e) for e in val_res.errors]
+        raise ValueError(f"Invalid inputs: {'; '.join(error_msgs)}")
 
     df_train = load_train_features()
     expected_cols = df_train.columns.tolist()

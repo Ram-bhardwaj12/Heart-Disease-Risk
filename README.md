@@ -54,25 +54,25 @@ The project utilizes the widely studied **Kaggle Heart Disease Dataset** (derive
 | Feature Name | Clinical Description | Data Type | Permissible / Observed Range |
 | :--- | :--- | :--- | :--- |
 | `age` | Age of patient in years | Integer | 29 – 77 |
-| `sex` | Biological sex (`1` = male, `0` = female) | Categorical (Binary) | 0, 1 |
-| `cp` | Chest pain type (`0` = typical angina, `1` = atypical angina, `2` = non-anginal pain, `3` = asymptomatic) (value meanings differ between copies of this dataset and are not verified from the file itself) | Categorical (Nominal) | 0, 1, 2, 3 |
+| `sex` | Biological sex (`0` = Female, `1` = Male) | Categorical (Binary) | 0, 1 |
+| `cp` | Chest pain type (`0` = Asymptomatic (no chest pain), `1` = Atypical angina, `2` = Non-anginal pain, `3` = Typical angina); labels inferred from value counts and disease rates (see reports/category_label_evidence.md); the dataset provider does not document the encoding | Categorical (Nominal) | 0, 1, 2, 3 |
 | `trestbps` | Resting blood pressure in mm Hg on hospital admission | Continuous (Integer) | 94 – 200 mm Hg |
 | `chol` | Serum cholesterol level in mg/dl | Continuous (Integer) | 126 – 564 mg/dl |
 | `fbs` | Fasting blood sugar > 120 mg/dl (`1` = true, `0` = false) | Categorical (Binary) | 0, 1 |
-| `restecg` | Resting electrocardiographic results (`0` = normal, `1` = ST-T wave abnormality, `2` = probable or definite left ventricular hypertrophy) | Categorical (Nominal) | 0, 1, 2 |
+| `restecg` | Resting electrocardiographic results (`0` = Left ventricular hypertrophy, `1` = Normal, `2` = ST-T wave abnormality); labels inferred from value counts and disease rates (see reports/category_label_evidence.md); the dataset provider does not document the encoding | Categorical (Nominal) | 0, 1, 2 |
 | `thalach` | Maximum heart rate achieved during stress test | Continuous (Integer) | 71 – 202 bpm |
 | `exang` | Exercise-induced angina (`1` = yes, `0` = no) | Categorical (Binary) | 0, 1 |
 | `oldpeak` | ST depression induced by exercise relative to rest | Continuous (Float) | 0.0 – 6.2 |
-| `slope` | Slope of the peak exercise ST segment (`0` = upsloping, `1` = flat, `2` = downsloping) (value meanings differ between copies of this dataset and are not verified from the file itself) | Categorical (Nominal) | 0, 1, 2 |
+| `slope` | Slope of the peak exercise ST segment (`0` = Downsloping, `1` = Flat, `2` = Upsloping); labels inferred from value counts and disease rates (see reports/category_label_evidence.md); the dataset provider does not document the encoding | Categorical (Nominal) | 0, 1, 2 |
 | `ca` | Number of major vessels (0–3) colored by fluoroscopy | Discrete (Integer) | ca = 4 (4 rows) and thal = 0 (2 rows) occur in the data and are treated as missing |
-| `thal` | Thalassemia status (`1` = normal, `2` = fixed defect, `3` = reversible defect) (value meanings differ between copies of this dataset and are not verified from the file itself) | Categorical (Nominal) | ca = 4 (4 rows) and thal = 0 (2 rows) occur in the data and are treated as missing |
+| `thal` | Thallium stress test result (`1` = Fixed defect, `2` = Normal, `3` = Reversible defect); labels inferred from value counts and disease rates (see reports/category_label_evidence.md); the dataset provider does not document the encoding | Categorical (Nominal) | ca = 4 (4 rows) and thal = 0 (2 rows) occur in the data and are treated as missing |
 | `target` | Original label column from the Kaggle file. Audit evidence in this file indicates target = 1 corresponds to ABSENCE of heart disease. The project uses a derived column 'disease' = 1 - target (1 = disease present). | Binary Target | 0, 1 |
 
 ### Known Data Issues
 * **Duplicate Observations:** The raw 1,025-row dataset contains repeated observations representing approximately 300 unique clinical patients.
 * **Leakage Prevention:** To avoid synthetic performance inflation and severe data leakage between training and testing sets, **all duplicate records are purged strictly BEFORE the train/test split**.
 * **Audit & Verification:** The exact count of unique instances will be verified systematically in code during Phase 1 and recorded directly into the project's Results section.
-* **Encoding verification:** The value codes in the feature dictionary (for example thal, slope, cp and the direction of target) will be verified against the actual file in Phase 1 and corrected here if they differ.
+* **Encoding verification:** Value codes for sex, cp, restecg, slope and thal: labels inferred from value counts and disease rates (see reports/category_label_evidence.md); the dataset provider does not document the encoding.
 * Label direction: the audit showed target = 1 groups have higher thalach, lower oldpeak, lower exercise angina and ca = 0 more often, which is the clinical pattern of healthy patients. The project therefore uses disease = 1 - target. Sanity check after training passed: for disease = 1, logistic regression coefficients are negative for thalach and positive for oldpeak and exang.
 * Invalid codes: ca = 4 and thal = 0 are converted to missing values and imputed with the most frequent training value.
 * Small test set: with 302 unique patients the test split has about 61 rows, so test metrics are noisy and are reported together with cross-validation results.
@@ -494,7 +494,7 @@ Live app URL: [to be added after deployment]
 1. **Small Unique Sample Size:** After purging duplicate patient records, the dataset comprises only approximately 300 unique individuals, limiting statistical power and high-dimensional generalization.
 2. **Single-Source Regional Bias:** Data collection originates from historical clinical cohorts that do not adequately reflect modern heterogeneous demographic, socioeconomic, or regional populations.
 3. **Absence of Clinical Validation:** Predictions are produced solely as an academic machine learning benchmark and have not been validated in a prospective clinical trial.
-4. Value codes for cp, slope and thal are not verified against official documentation, so the project reports raw codes and makes no clinical interpretation of individual codes.
+4. Value codes for cp, slope and thal: labels inferred from value counts and disease rates (see reports/category_label_evidence.md); the dataset provider does not document the encoding.
 
 ---
 

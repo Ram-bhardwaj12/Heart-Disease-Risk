@@ -1,17 +1,5 @@
-"""Pytest configuration for test suite stability on Windows."""
+"""Pytest configuration for test suite."""
 
-import gc
-import matplotlib
+import os
 
-matplotlib.use("Agg")
-
-import pytest
-
-
-@pytest.fixture(autouse=True)
-def sync_gc():
-    """Disable automatic asynchronous cyclic GC during test execution to prevent Matplotlib C-extension collisions."""
-    gc.disable()
-    yield
-    gc.collect()
-
+os.environ.setdefault("MPLBACKEND", "Agg")

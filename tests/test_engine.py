@@ -72,12 +72,15 @@ def test_equivalence_61_test_rows_and_300_random_inputs():
 
 
 def test_explain_grouped_13_rows_and_thal_composition():
-    """(b) Test explain_grouped has 13 rows and thal amount equals the sum of the three nom__thal columns."""
+    """(b) Test explain_grouped has 13 rows, includes short_label, and thal amount equals the sum of the three nom__thal columns."""
     test_df = engine.load_test_features()
     sample = test_df.iloc[0].to_dict()
 
     grouped_df = engine.explain_grouped(sample)
     assert len(grouped_df) == 13
+    assert "short_label" in grouped_df.columns
+    for sl in grouped_df["short_label"]:
+        assert "(" not in sl and ")" not in sl
 
     thal_row = grouped_df[grouped_df["key"] == "thal"].iloc[0]
     thal_amount = float(thal_row["amount"])
@@ -115,51 +118,56 @@ def test_validate_inputs_rules():
     sample_missing_age = {k: v for k, v in valid_sample.items() if k != "age"}
     res = engine.validate_inputs(sample_missing_age)
     assert not res.is_valid
-    assert any("age" in err for err in res.errors)
+    assert any(e["field"] == "age" for e in res.errors)
 
     # Reject NaN for required field
     sample_nan_trestbps = dict(valid_sample, trestbps=np.nan)
     res = engine.validate_inputs(sample_nan_trestbps)
     assert not res.is_valid
-    assert any("trestbps" in err for err in res.errors)
+    assert any(e["field"] == "trestbps" for e in res.errors)
 
     # Reject non-numeric string
     sample_str = dict(valid_sample, chol="invalid_chol")
     res = engine.validate_inputs(sample_str)
     assert not res.is_valid
-    assert any("chol" in err for err in res.errors)
+    assert any(e["field"] == "chol" for e in res.errors)
 
     # Reject unseen category
     sample_bad_cat = dict(valid_sample, cp=9)
     res = engine.validate_inputs(sample_bad_cat)
     assert not res.is_valid
-    assert any("cp" in err for err in res.errors)
+    assert any(e["field"] == "cp" for e in res.errors)
 
     # Reject out of plausible physiological limits (e.g. age=150, chol=5000, trestbps=0)
     res_age_150 = engine.validate_inputs(dict(valid_sample, age=150))
     assert not res_age_150.is_valid
-    assert any("age" in err.lower() for err in res_age_150.errors)
+    assert any(e["field"] == "age" for e in res_age_150.errors)
+    assert any("Enter an age between 18 and 100" in e["message"] for e in res_age_150.errors)
 
     res_chol_5000 = engine.validate_inputs(dict(valid_sample, chol=5000))
     assert not res_chol_5000.is_valid
-    assert any("chol" in err.lower() for err in res_chol_5000.errors)
+    assert any(e["field"] == "chol" for e in res_chol_5000.errors)
+    assert any("Enter a cholesterol level between 80 and 700" in e["message"] for e in res_chol_5000.errors)
 
     res_trestbps_0 = engine.validate_inputs(dict(valid_sample, trestbps=0))
     assert not res_trestbps_0.is_valid
-    assert any("trestbps" in err.lower() for err in res_trestbps_0.errors)
+    assert any(e["field"] == "trestbps" for e in res_trestbps_0.errors)
+    assert any("Enter a resting blood pressure between 60 and 260" in e["message"] for e in res_trestbps_0.errors)
 
     # Warn for out of training range but inside plausible limits (e.g. age=25, age=90)
     sample_out_of_train = dict(valid_sample, age=25)
     res_25 = engine.validate_inputs(sample_out_of_train)
     assert res_25.is_valid
     assert len(res_25.warnings) > 0
-    assert any("Age" in w for w in res_25.warnings)
+    assert any(w["field"] == "age" for w in res_25.warnings)
+    assert any("outside the range the model learned from" in w["message"] for w in res_25.warnings)
 
     sample_out_of_train_90 = dict(valid_sample, age=90)
     res_90 = engine.validate_inputs(sample_out_of_train_90)
     assert res_90.is_valid
     assert len(res_90.warnings) > 0
-    assert any("Age" in w for w in res_90.warnings)
+    assert any(w["field"] == "age" for w in res_90.warnings)
+    assert any("outside the range the model learned from" in w["message"] for w in res_90.warnings)
 
     # Accept missing ca and thal
     sample_no_ca_thal = {k: v for k, v in valid_sample.items() if k not in ["ca", "thal"]}
@@ -234,7 +242,7 @@ def test_what_if_curve_properties():
 
 
 def test_no_forbidden_wording_in_summaries():
-    """(h) Test that no forbidden words ('you have', 'diagnosis of', 'you are at risk') appear in any test row summary."""
+    """(h) Test that no forbidden words ('you have', 'diagnosis of', 'you are at risk'), no double brackets, and no 'Option' appear."""
     test_df = engine.load_test_features()
     forbidden = ["you have", "diagnosis of", "diagnosis", "you are at risk", "at risk of"]
 
@@ -249,6 +257,12 @@ def test_no_forbidden_wording_in_summaries():
 
         for f_phrase in forbidden:
             assert f_phrase not in summary_lower, f"Forbidden phrase '{f_phrase}' found in row {idx} summary: {summary}"
+
+        # No two consecutive bracket groups
+        assert not re.search(r"\)\s*\(", summary), f"Two consecutive bracket groups found in row {idx} summary: {summary}"
+
+        # Never print the text 'Option'
+        assert "Option" not in summary, f"Text 'Option' found in row {idx} summary: {summary}"
 
 
 def test_no_emojis_in_engine_api_web():

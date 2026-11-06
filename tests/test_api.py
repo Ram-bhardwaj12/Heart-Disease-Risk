@@ -32,14 +32,20 @@ def test_schema_endpoint():
     assert "cutoffs" in data
     assert data["cutoffs"]["low"] == 0.3
     assert data["cutoffs"]["high"] == 0.5
-    assert data["unverified_codes"] == ["cp", "restecg", "slope", "thal"]
+    assert data["inferred_codes"] == ["cp", "restecg", "slope", "thal"]
+    assert "inferred_codes_note" in data
+    assert "Cleveland" in data["inferred_codes_note"]
     assert len(data["fields"]) == 13
 
-    # Check key features present
+    # Check key features present and short_label format
     field_keys = [f["key"] for f in data["fields"]]
     assert "age" in field_keys
     assert "ca" in field_keys
     assert "thal" in field_keys
+
+    for f in data["fields"]:
+        assert "short_label" in f
+        assert "(" not in f["short_label"] and ")" not in f["short_label"]
 
     ca_spec = next(f for f in data["fields"] if f["key"] == "ca")
     assert ca_spec["optional"] is True
@@ -92,29 +98,25 @@ def test_predict_endpoint_success_and_equivalence():
         assert len(body["top_lowering"]) <= 3
 
         for item in body["contributions"]:
-            assert set(item.keys()) == {"key", "label", "value_display", "amount", "direction"}
+            assert set(item.keys()) == {"key", "label", "short_label", "value_display", "amount", "direction"}
             assert item["direction"] in {"raised", "lowered"}
+            assert "(" not in item["short_label"] and ")" not in item["short_label"]
 
         # Contributions sorted descending by absolute amount
         abs_amounts = [abs(c["amount"]) for c in body["contributions"]]
         assert abs_amounts == sorted(abs_amounts, reverse=True)
 
-        # Summary contains >= 2 field labels and never contains "Option " alone without its field label
+        # Summary contains short labels, no consecutive brackets, and no text 'Option'
         summary = body["summary"]
-        field_labels = [f["label"] for f in engine.get_feature_specs().values()]
-        matched_labels = [lbl for lbl in field_labels if lbl in summary]
+        short_labels = [f["short_label"] for f in engine.get_feature_specs().values()]
+        matched_labels = [lbl for lbl in short_labels if lbl in summary]
         assert len(matched_labels) >= 2, f"Summary did not contain >= 2 field labels: {summary}"
 
-        # Never print an option number alone without its field label
-        for opt_num in range(4):
-            opt_str = f"Option {opt_num}"
-            if opt_str in summary:
-                # Every occurrence of 'Option X' must be wrapped in ' (Option X)' preceded by words
-                matches = re.finditer(re.escape(opt_str), summary)
-                for m in matches:
-                    start = m.start()
-                    prefix = summary[:start]
-                    assert prefix.endswith("(") and len(prefix.strip(" (")) > 0
+        # No two consecutive bracket groups
+        assert not re.search(r"\)\s*\(", summary), f"Two consecutive bracket groups found in summary: {summary}"
+
+        # Never print the text 'Option'
+        assert "Option" not in summary, f"Text 'Option' found in summary: {summary}"
 
         # Model agreement
         assert set(body["model_agreement"].keys()) == {"tree_count", "share_at_or_above_half", "mean_score"}
@@ -145,7 +147,8 @@ def test_predict_endpoint_optional_fields_and_warnings():
 
     assert set(body["missing_used"]) == {"ca", "thal"}
     assert len(body["warnings"]) > 0
-    assert any("age" in w.lower() for w in body["warnings"])
+    assert any(w["field"] == "age" for w in body["warnings"])
+    assert any("outside the range the model learned from" in w["message"] for w in body["warnings"])
 
 
 def test_predict_endpoint_422_validations():
@@ -157,34 +160,50 @@ def test_predict_endpoint_422_validations():
     bad_sample_1 = {k: v for k, v in valid_sample.items() if k != "age"}
     resp = client.post("/api/predict", json={"inputs": bad_sample_1})
     assert resp.status_code == 422
+    assert any(e["field"] == "age" for e in resp.json()["errors"])
 
     # 2. String in numeric field
     bad_sample_2 = dict(valid_sample, trestbps="one-twenty")
     resp = client.post("/api/predict", json={"inputs": bad_sample_2})
     assert resp.status_code == 422
+    assert any(e["field"] == "trestbps" for e in resp.json()["errors"])
 
     # 3. Unseen categorical code
     bad_sample_3 = dict(valid_sample, cp=99)
     resp = client.post("/api/predict", json={"inputs": bad_sample_3})
     assert resp.status_code == 422
+    assert any(e["field"] == "cp" for e in resp.json()["errors"])
 
     # 4. Extra payload field (forbid extra)
     resp = client.post("/api/predict", json={"inputs": valid_sample, "unrecognized_key": 123})
     assert resp.status_code == 422
 
-    # 5. Plausible limit violations rejected with 422
-    assert client.post("/api/predict", json={"inputs": dict(valid_sample, age=150)}).status_code == 422
-    assert client.post("/api/predict", json={"inputs": dict(valid_sample, chol=5000)}).status_code == 422
-    assert client.post("/api/predict", json={"inputs": dict(valid_sample, trestbps=0)}).status_code == 422
+    # 5. Plausible limit violations rejected with 422 and plain language messages
+    resp_150 = client.post("/api/predict", json={"inputs": dict(valid_sample, age=150)})
+    assert resp_150.status_code == 422
+    assert any(e["field"] == "age" for e in resp_150.json()["errors"])
+    assert any("Enter an age between 18 and 100" in e["message"] for e in resp_150.json()["errors"])
+
+    resp_5000 = client.post("/api/predict", json={"inputs": dict(valid_sample, chol=5000)})
+    assert resp_5000.status_code == 422
+    assert any(e["field"] == "chol" for e in resp_5000.json()["errors"])
+    assert any("Enter a cholesterol level between 80 and 700" in e["message"] for e in resp_5000.json()["errors"])
+
+    resp_0 = client.post("/api/predict", json={"inputs": dict(valid_sample, trestbps=0)})
+    assert resp_0.status_code == 422
+    assert any(e["field"] == "trestbps" for e in resp_0.json()["errors"])
+    assert any("Enter a resting blood pressure between 60 and 260" in e["message"] for e in resp_0.json()["errors"])
 
     # 6. Accepted within plausible limits with warning (HTTP 200)
     resp_25 = client.post("/api/predict", json={"inputs": dict(valid_sample, age=25)})
     assert resp_25.status_code == 200
-    assert any("age" in w.lower() for w in resp_25.json()["warnings"])
+    assert any(w["field"] == "age" for w in resp_25.json()["warnings"])
+    assert any("outside the range the model learned from" in w["message"] for w in resp_25.json()["warnings"])
 
     resp_90 = client.post("/api/predict", json={"inputs": dict(valid_sample, age=90)})
     assert resp_90.status_code == 200
-    assert any("age" in w.lower() for w in resp_90.json()["warnings"])
+    assert any(w["field"] == "age" for w in resp_90.json()["warnings"])
+    assert any("outside the range the model learned from" in w["message"] for w in resp_90.json()["warnings"])
 
 
 def test_whatif_endpoint_success_and_rejection():

@@ -1,3 +1,7 @@
+import os
+
+os.environ.setdefault("MPLBACKEND", "Agg")
+
 """FastAPI application for CardioLens.
 
 Stateless, zero request body logging, strict security headers, and input validation.
@@ -9,12 +13,15 @@ from typing import Any
 import urllib.parse
 
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
 from engine.content import (
     DISCLAIMER,
+    INFERRED_CODES,
+    INFERRED_CODES_NOTE,
     OPTIONAL_FIELDS,
     PRODUCT_NAME,
     REQUIRED_FIELDS,
@@ -84,6 +91,15 @@ async def security_and_limit_middleware(request: Request, call_next):
     return response
 
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = []
+    for err in exc.errors():
+        field = str(err["loc"][-1]) if err["loc"] else "payload"
+        errors.append({"field": field, "message": err["msg"]})
+    return JSONResponse(status_code=422, content={"errors": errors})
+
+
 # -----------------------------------------------------------------------------
 # Request Models (extra="forbid")
 # -----------------------------------------------------------------------------
@@ -114,7 +130,7 @@ def health_check():
 
 @app.get("/api/schema")
 def get_schema():
-    """Field schema, product metadata, decision cut-offs, and unverified codes."""
+    """Field schema, product metadata, decision cut-offs, and inferred codes."""
     specs = get_feature_specs()
     low_c, high_c = get_cutoffs()
 
@@ -125,6 +141,8 @@ def get_schema():
         "tagline": TAGLINE,
         "disclaimer": DISCLAIMER,
         "cutoffs": {"low": low_c, "high": high_c},
+        "inferred_codes": INFERRED_CODES,
+        "inferred_codes_note": INFERRED_CODES_NOTE,
         "unverified_codes": UNVERIFIED_CODES,
         "fields": fields_list,
         "field_specs": specs,
@@ -136,9 +154,9 @@ def predict_endpoint(payload: PredictPayload):
     """Predict risk score and return tier, local contributions, and summary."""
     val_res = validate_inputs(payload.inputs)
     if not val_res.is_valid:
-        raise HTTPException(
+        return JSONResponse(
             status_code=422,
-            detail={"errors": val_res.errors, "message": "; ".join(val_res.errors)},
+            content={"errors": val_res.errors},
         )
 
     score = predict_score(val_res.cleaned_inputs)
@@ -155,6 +173,7 @@ def predict_endpoint(payload: PredictPayload):
         contributions.append({
             "key": r["key"],
             "label": r["label"],
+            "short_label": str(r.get("short_label", r["label"])),
             "value_display": str(r["value_display"]),
             "amount": amt,
             "direction": "raised" if amt >= 0 else "lowered",
@@ -204,19 +223,26 @@ def whatif_endpoint(payload: WhatIfPayload):
     """Compute sensitivity curve by varying one continuous numeric feature."""
     feature = payload.feature
     if feature not in CONTINUOUS_NUMERIC_FEATURES:
-        raise HTTPException(
+        return JSONResponse(
             status_code=422,
-            detail=(
-                f"Feature '{feature}' is not an allowed continuous numeric feature for what-if analysis. "
-                f"Allowed features: {CONTINUOUS_NUMERIC_FEATURES}."
-            ),
+            content={
+                "errors": [
+                    {
+                        "field": "feature",
+                        "message": (
+                            f"Feature '{feature}' is not an allowed continuous numeric feature for what-if analysis. "
+                            f"Allowed features: {CONTINUOUS_NUMERIC_FEATURES}."
+                        ),
+                    }
+                ]
+            },
         )
 
     val_res = validate_inputs(payload.inputs)
     if not val_res.is_valid:
-        raise HTTPException(
+        return JSONResponse(
             status_code=422,
-            detail={"errors": val_res.errors, "message": "; ".join(val_res.errors)},
+            content={"errors": val_res.errors},
         )
 
     df_curve = what_if_curve(val_res.cleaned_inputs, feature, n_points=payload.n_points)
