@@ -1,0 +1,50 @@
+/* ==========================================================================
+   CardioLens Print Stylesheet
+   ========================================================================== */
+
+@media print {
+  *, *::before, *::after {
+    background: transparent !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    font-size: 12pt;
+  }
+
+  .top-bar,
+  .menu-panel,
+  .disclaimer-strip,
+  .hero-section,
+  .examples-section,
+  .form-card,
+  .wizard-nav,
+  .whatif-container,
+  .app-footer,
+  .btn,
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  .card,
+  .summary-report-card {
+    border: 1px solid #666666 !important;
+    page-break-inside: avoid;
+    margin-bottom: 1.5rem;
+  }
+
+  .answers-two-col {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+}
+

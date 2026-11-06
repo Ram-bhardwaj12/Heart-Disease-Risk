@@ -1,0 +1,76 @@
+/* ==========================================================================
+   CardioLens Design Tokens
+   Strict design system variables, zero hard-coded values outside css/
+   ========================================================================== */
+
+:root {
+  /* Colors - Base Palette */
+  --color-page: #F6F8FA;
+  --color-surface: #FFFFFF;
+  --color-surface-subtle: #F1F4F7;
+  --color-ink: #0B1B2B;
+  --color-muted: #4A5B6D;
+  --color-border: #E2E8EE;
+  --color-border-hover: #CBD5E1;
+
+  /* Brand Colors */
+  --color-brand: #0F6E7A;
+  --color-brand-hover: #0B565F;
+  --color-brand-tint: #E8F4F5;
+  --color-brand-focus: rgba(15, 110, 122, 0.25);
+
+  /* Risk Tier Colors & Tints */
+  --color-tier-lower-text: #166A47;
+  --color-tier-lower-bg: #EBF7F0;
+  --color-tier-lower-border: #B7E4CD;
+
+  --color-tier-moderate-text: #9A5B00;
+  --color-tier-moderate-bg: #FEF7EC;
+  --color-tier-moderate-border: #F7D8A8;
+
+  --color-tier-higher-text: #A8322D;
+  --color-tier-higher-bg: #FDF2F1;
+  --color-tier-higher-border: #F7BFBC;
+
+  /* Typography */
+  --font-sans: "Inter", ui-sans-serif, "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-size-sm: 0.875rem;    /* 14px */
+  --font-size-base: 1rem;       /* 16px (body minimum) */
+  --font-size-md: 1.125rem;    /* 18px */
+  --font-size-lg: 1.375rem;    /* 22px */
+  --font-size-xl: 1.75rem;     /* 28px */
+  --font-size-xxl: 2.5rem;     /* 40px */
+  --font-size-huge: 3.5rem;    /* 56px */
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.6;
+
+  --letter-spacing-tight: -0.025em;
+
+  /* 8px Spacing Scale */
+  --space-1: 0.5rem;   /* 8px */
+  --space-2: 1rem;     /* 16px */
+  --space-3: 1.5rem;   /* 24px */
+  --space-4: 2rem;     /* 32px */
+  --space-5: 2.5rem;   /* 40px */
+  --space-6: 3rem;     /* 48px */
+
+  /* Layout */
+  --max-width: 1120px;
+  --min-touch-target: 44px;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-card: 16px;
+  --radius-full: 9999px;
+
+  /* Layered Shadows */
+  --shadow-sm: 0 1px 3px rgba(11, 27, 43, 0.04), 0 1px 2px rgba(11, 27, 43, 0.02);
+  --shadow-card: 0 4px 16px rgba(11, 27, 43, 0.05), 0 1px 3px rgba(11, 27, 43, 0.03);
+  --shadow-elevated: 0 12px 28px -4px rgba(11, 27, 43, 0.08), 0 6px 12px -4px rgba(11, 27, 43, 0.04);
+
+  /* Motion */
+  --transition-fast: 200ms ease;
+}
+

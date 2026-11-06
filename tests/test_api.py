@@ -62,6 +62,43 @@ def test_schema_endpoint():
     assert [o["value"] for o in specs["sex"]["options"]] == [0, 1]
 
 
+def test_examples_endpoint():
+    """Test GET /api/examples returns 3 exemplars matching X_test rows within 1e-12 with no extra fields."""
+    resp = client.get("/api/examples")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data, list)
+    assert len(data) == 3
+
+    shap_summ = engine.load_shap_summary()
+    exemplars = shap_summ.get("selected_exemplar_rows", {})
+    df_test = engine.load_test_features()
+
+    expected_indices = [
+        ("example_1", "Example 1", exemplars["high_risk_true_positive"]["test_row_index"]),
+        ("example_2", "Example 2", exemplars["low_risk_true_negative"]["test_row_index"]),
+        ("example_3", "Example 3", exemplars["missed_case_false_negative"]["test_row_index"]),
+    ]
+
+    for item, (exp_id, exp_title, exp_row_idx) in zip(data, expected_indices):
+        assert set(item.keys()) == {"id", "title", "inputs"}
+        assert item["id"] == exp_id
+        assert item["title"] == exp_title
+        # Titles carry NO risk wording
+        assert "risk" not in item["title"].lower()
+
+        # Inputs match X_test rows within 1e-12
+        exp_row = df_test.iloc[exp_row_idx]
+        assert set(item["inputs"].keys()) == set(df_test.columns)
+        for col in df_test.columns:
+            actual_val = item["inputs"][col]
+            exp_val = exp_row[col]
+            if np.isnan(exp_val):
+                assert actual_val is None
+            else:
+                assert abs(float(actual_val) - float(exp_val)) < 1e-12
+
+
 def test_predict_endpoint_success_and_equivalence():
     """Test POST /api/predict for all 61 test rows matches engine and direct predict_proba within 1e-12."""
     import re

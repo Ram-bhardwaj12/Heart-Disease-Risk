@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 import urllib.parse
 
+import pandas as pd
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
@@ -38,6 +39,7 @@ from engine.core import (
     load_data_audit_summary,
     load_evaluation_summary,
     load_shap_summary,
+    load_test_features,
     predict_score,
     risk_tier,
     tree_agreement,
@@ -147,6 +149,37 @@ def get_schema():
         "fields": fields_list,
         "field_specs": specs,
     }
+
+
+@app.get("/api/examples")
+def get_examples():
+    """Return three sample patients taken from held-out test rows in reports/shap_summary.json."""
+    shap_summ = load_shap_summary()
+    exemplars = shap_summ.get("selected_exemplar_rows", {})
+    df_test = load_test_features()
+
+    cases = [
+        ("example_1", "Example 1", exemplars["high_risk_true_positive"]["test_row_index"]),
+        ("example_2", "Example 2", exemplars["low_risk_true_negative"]["test_row_index"]),
+        ("example_3", "Example 3", exemplars["missed_case_false_negative"]["test_row_index"]),
+    ]
+
+    results = []
+    for ex_id, title, row_idx in cases:
+        row = df_test.iloc[row_idx]
+        raw_inputs = {}
+        for col in df_test.columns:
+            val = row[col]
+            if pd.isna(val):
+                raw_inputs[col] = None
+            else:
+                raw_inputs[col] = float(val)
+        results.append({
+            "id": ex_id,
+            "title": title,
+            "inputs": raw_inputs,
+        })
+    return results
 
 
 @app.post("/api/predict")
