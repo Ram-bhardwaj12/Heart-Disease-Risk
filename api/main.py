@@ -33,6 +33,7 @@ from engine.core import (
     load_shap_summary,
     predict_score,
     risk_tier,
+    tree_agreement,
     validate_inputs,
     what_if_curve,
 )
@@ -156,18 +157,26 @@ def predict_endpoint(payload: PredictPayload):
             "label": r["label"],
             "value_display": str(r["value_display"]),
             "amount": amt,
-            "direction": str(r["direction"]),
+            "direction": "raised" if amt >= 0 else "lowered",
         })
+    contributions.sort(key=lambda x: abs(x["amount"]), reverse=True)
 
-    raising = [c for c in contributions if c["amount"] > 0]
+    raising = [c for c in contributions if c["direction"] == "raised"]
     raising.sort(key=lambda x: x["amount"], reverse=True)
     top_raising = raising[:3]
 
-    lowering = [c for c in contributions if c["amount"] < 0]
+    lowering = [c for c in contributions if c["direction"] == "lowered"]
     lowering.sort(key=lambda x: abs(x["amount"]), reverse=True)
     top_lowering = lowering[:3]
 
-    summary_sentence = build_summary(score, tier_info, contributions)
+    summary_sentence = build_summary(score, tier_info, top_raising, top_lowering)
+
+    tree_scores, share_ge_05, mean_score = tree_agreement(val_res.cleaned_inputs)
+    model_agreement = {
+        "tree_count": int(len(tree_scores)),
+        "share_at_or_above_half": float(share_ge_05),
+        "mean_score": float(mean_score),
+    }
 
     return {
         "score": score,
@@ -185,6 +194,7 @@ def predict_endpoint(payload: PredictPayload):
         "top_raising": top_raising,
         "top_lowering": top_lowering,
         "base_value": base_val,
+        "model_agreement": model_agreement,
         "disclaimer": DISCLAIMER,
     }
 

@@ -98,7 +98,7 @@ FIELD_METADATA = {
         "optional": False,
     },
     "restecg": {
-        "label": "Resting electrocardiogram (code)",
+        "label": "Resting ECG (code)",
         "help": "Dataset code for resting electrocardiographic result (Option 0 to Option 2).",
         "group": "report",
         "type": "choice",
@@ -134,8 +134,8 @@ FIELD_METADATA = {
         "optional": False,
     },
     "slope": {
-        "label": "Peak exercise ST segment slope (code)",
-        "help": "Dataset code for the slope of the peak exercise ST segment (Option 0 to Option 2).",
+        "label": "ST slope (code)",
+        "help": "Dataset code for ST slope (Option 0 to Option 2).",
         "group": "report",
         "type": "choice",
         "unit": "",
@@ -152,8 +152,8 @@ FIELD_METADATA = {
         "optional": True,
     },
     "thal": {
-        "label": "Thalassemia type (code)",
-        "help": "Dataset code for thalassemia type (Option 1 to Option 3). Optional field.",
+        "label": "Thal test result (code)",
+        "help": "Dataset code for Thal test result (Option 1 to Option 3). Optional field.",
         "group": "report",
         "type": "choice",
         "unit": "",
@@ -178,10 +178,17 @@ REQUIRED_FIELDS = [
 ]
 
 
-def build_summary(score: float, tier: Any, contributions: Any) -> str:
-    """Build neutral, factual one-sentence summary of model score and contributions.
+def build_summary(
+    score: float,
+    tier: Any,
+    top_raising_or_contributions: Any,
+    top_lowering: Any = None,
+) -> str:
+    """Build neutral, factual summary of model score and contributions.
 
-    Never contains causal or diagnostic language (e.g., 'you have', 'diagnosis', 'at risk').
+    Template:
+    'The model gives a {tier label} score ({percent}%). Answers that raised the score most: {label} ({value_display}), {label} ({value_display}). Answers that lowered it most: {label} ({value_display}).'
+    Omit the last sentence if nothing lowered the score. Neutral wording only.
     """
     pct = round(score * 100.0, 1)
     if isinstance(tier, dict):
@@ -189,33 +196,37 @@ def build_summary(score: float, tier: Any, contributions: Any) -> str:
     else:
         tier_label = str(tier).capitalize()
 
-    items = contributions
-    if hasattr(items, "to_dict") and callable(items.to_dict):
-        items = items.to_dict(orient="records")
-    elif not isinstance(items, list):
-        items = list(items)
+    if top_lowering is None:
+        items = top_raising_or_contributions
+        if hasattr(items, "to_dict") and callable(items.to_dict):
+            items = items.to_dict(orient="records")
+        elif not isinstance(items, list):
+            items = list(items)
 
-    raising = []
-    lowering = []
+        r_all = [c for c in items if (c.get("amount") if "amount" in c else c.get("shap_amount", 0.0)) > 0]
+        r_all.sort(
+            key=lambda x: (x.get("amount") if "amount" in x else x.get("shap_amount", 0.0)),
+            reverse=True,
+        )
+        raising = r_all[:3]
 
-    for item in items:
-        amt = item.get("amount") if "amount" in item else item.get("shap_amount", 0.0)
-        lbl = item.get("label") or item.get("feature") or item.get("key", "")
-        if amt > 0:
-            raising.append((lbl, amt))
-        elif amt < 0:
-            lowering.append((lbl, amt))
+        l_all = [c for c in items if (c.get("amount") if "amount" in c else c.get("shap_amount", 0.0)) < 0]
+        l_all.sort(
+            key=lambda x: abs(x.get("amount") if "amount" in x else x.get("shap_amount", 0.0)),
+            reverse=True,
+        )
+        lowering = l_all[:3]
+    else:
+        raising = top_raising_or_contributions
+        lowering = top_lowering
 
-    raising.sort(key=lambda x: x[1], reverse=True)
-    lowering.sort(key=lambda x: abs(x[1]), reverse=True)
-
-    parts = []
+    sentence = f"The model gives a {tier_label} score ({pct}%)."
     if raising:
-        top_r = [f"{lbl} (+{amt:.4f})" for lbl, amt in raising[:2]]
-        parts.append(f"{' and '.join(top_r)} raised the score")
+        r_parts = [f"{item['label']} ({item['value_display']})" for item in raising[:2]]
+        sentence += f" Answers that raised the score most: {', '.join(r_parts)}."
     if lowering:
-        top_l = [f"{lbl} ({amt:.4f})" for lbl, amt in lowering[:2]]
-        parts.append(f"{' and '.join(top_l)} lowered the score")
+        l_parts = [f"{item['label']} ({item['value_display']})" for item in lowering[:1]]
+        sentence += f" Answers that lowered it most: {', '.join(l_parts)}."
 
-    desc = "; ".join(parts) if parts else "all features had zero attribution"
-    return f"Model score: {pct}% ({tier_label} tier). {desc}."
+    return sentence
+

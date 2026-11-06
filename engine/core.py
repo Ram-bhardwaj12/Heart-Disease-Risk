@@ -49,6 +49,14 @@ ORIGINAL_FEATURES = [
 CATEGORICAL_FEATURES = ["sex", "cp", "fbs", "restecg", "exang", "slope", "ca", "thal"]
 CONTINUOUS_NUMERIC_FEATURES = ["age", "trestbps", "chol", "thalach", "oldpeak"]
 
+PLAUSIBLE_LIMITS: dict[str, tuple[float, float]] = {
+    "age": (18.0, 100.0),
+    "trestbps": (60.0, 260.0),
+    "chol": (80.0, 700.0),
+    "thalach": (40.0, 230.0),
+    "oldpeak": (0.0, 10.0),
+}
+
 
 class ValidationResult(NamedTuple):
     """Validation outcome holding status, errors, warnings, cleaned inputs, and missing keys."""
@@ -109,7 +117,10 @@ def load_model_pipeline() -> Any:
     path = REPO_ROOT / "models" / "best_random_forest.joblib"
     if not path.exists():
         raise FileNotFoundError(f"Model pipeline missing: {path}")
-    return joblib.load(path)
+    pipeline = joblib.load(path)
+    if hasattr(pipeline, "named_steps") and "classifier" in pipeline.named_steps:
+        pipeline.named_steps["classifier"].n_jobs = 1
+    return pipeline
 
 
 @lru_cache(maxsize=1)
@@ -219,8 +230,9 @@ def get_feature_specs() -> dict[str, dict[str, Any]]:
                 "optional": optional,
             }
         else:
-            min_val = float(valid_series.min())
-            max_val = float(valid_series.max())
+            plausible_min, plausible_max = PLAUSIBLE_LIMITS.get(col, (float(valid_series.min()), float(valid_series.max())))
+            train_min = float(valid_series.min())
+            train_max = float(valid_series.max())
             median_val = float(valid_series.median())
             step_val = meta.get("step", 1.0)
             specs[col] = {
@@ -230,8 +242,10 @@ def get_feature_specs() -> dict[str, dict[str, Any]]:
                 "group": group,
                 "type": field_type,
                 "unit": unit,
-                "min": min_val,
-                "max": max_val,
+                "min": plausible_min,
+                "max": plausible_max,
+                "training_min": train_min,
+                "training_max": train_max,
                 "step": step_val,
                 "default": round(median_val, 1) if step_val == 0.1 else round(median_val),
                 "options": [],
@@ -334,13 +348,19 @@ def validate_inputs(inputs: Any) -> ValidationResult:
 
         # 5. Continuous numeric validation
         elif col in CONTINUOUS_NUMERIC_FEATURES:
-            min_bound, max_bound = train_ranges[col]
+            min_plausible, max_plausible = PLAUSIBLE_LIMITS[col]
             disp_label = FIELD_METADATA.get(col, {}).get("label", col)
-            if val_float < min_bound or val_float > max_bound:
-                warnings.append(
-                    f"{disp_label} ({val_float}) is outside training range [{min_bound:.1f}, {max_bound:.1f}]."
+            if val_float < min_plausible or val_float > max_plausible:
+                errors.append(
+                    f"Feature '{col}' ({disp_label}) value {val_float} is outside plausible physiological limits [{min_plausible}, {max_plausible}]."
                 )
-            cleaned[col] = float(val_float)
+            else:
+                min_train, max_train = train_ranges[col]
+                if val_float < min_train or val_float > max_train:
+                    warnings.append(
+                        f"Feature '{col}' ({disp_label}) value {val_float} is outside the training data range [{min_train:.1f}, {max_train:.1f}]."
+                    )
+                cleaned[col] = float(val_float)
 
     is_valid = len(errors) == 0
     return ValidationResult(
@@ -524,7 +544,7 @@ def explain_grouped(inputs: Any) -> pd.DataFrame:
             "amount": feature_shap,
             "abs_shap": abs(feature_shap),
             "abs_amount": abs(feature_shap),
-            "direction": "Raised score (+)" if feature_shap >= 0 else "Lowered score (−)",
+            "direction": "raised" if feature_shap >= 0 else "lowered",
             "sign_str": f"+{feature_shap:.4f}" if feature_shap >= 0 else f"{feature_shap:.4f}",
         })
 
@@ -618,3 +638,4 @@ def tree_agreement(inputs: Any) -> tuple[np.ndarray, float, float]:
     mean_score = float(np.mean(tree_scores))
 
     return tree_scores, share_ge_05, mean_score
+

@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import numpy as np
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
@@ -47,10 +48,11 @@ def test_schema_endpoint():
 
 
 def test_predict_endpoint_success_and_equivalence():
-    """Test POST /api/predict for all 61 test rows matches engine within 1e-12."""
-    import numpy as np
-
+    """Test POST /api/predict for all 61 test rows matches engine and direct predict_proba within 1e-12."""
+    import re
     test_df = engine.load_test_features()
+    pipeline = engine.load_model_pipeline()
+    expected_cols = engine.load_train_features().columns.tolist()
 
     for idx in range(len(test_df)):
         sample = test_df.iloc[idx].to_dict()
@@ -62,17 +64,70 @@ def test_predict_endpoint_success_and_equivalence():
         assert resp.status_code == 200, f"Predict failed on row {idx}: {resp.text}"
 
         body = resp.json()
-        assert "score" in body
-        assert "score_percent" in body
-        assert "tier" in body
-        assert "contributions" in body
+        assert set(body.keys()) == {
+            "score",
+            "score_percent",
+            "tier",
+            "cutoffs",
+            "warnings",
+            "missing_used",
+            "summary",
+            "contributions",
+            "top_raising",
+            "top_lowering",
+            "base_value",
+            "model_agreement",
+            "disclaimer",
+        }
+        assert isinstance(body["score"], float)
+        assert 0.0 <= body["score"] <= 1.0
+        assert 0.0 <= body["score_percent"] <= 100.0
+        assert set(body["tier"].keys()) == {"key", "label", "text"}
+        assert body["tier"]["key"] in {"lower", "moderate", "higher"}
+        assert set(body["cutoffs"].keys()) == {"low", "high"}
+        assert isinstance(body["warnings"], list)
+        assert isinstance(body["missing_used"], list)
         assert len(body["contributions"]) == 13
-        assert "summary" in body
-        assert "base_value" in body
-        assert "disclaimer" in body
+        assert len(body["top_raising"]) <= 3
+        assert len(body["top_lowering"]) <= 3
 
+        for item in body["contributions"]:
+            assert set(item.keys()) == {"key", "label", "value_display", "amount", "direction"}
+            assert item["direction"] in {"raised", "lowered"}
+
+        # Contributions sorted descending by absolute amount
+        abs_amounts = [abs(c["amount"]) for c in body["contributions"]]
+        assert abs_amounts == sorted(abs_amounts, reverse=True)
+
+        # Summary contains >= 2 field labels and never contains "Option " alone without its field label
+        summary = body["summary"]
+        field_labels = [f["label"] for f in engine.get_feature_specs().values()]
+        matched_labels = [lbl for lbl in field_labels if lbl in summary]
+        assert len(matched_labels) >= 2, f"Summary did not contain >= 2 field labels: {summary}"
+
+        # Never print an option number alone without its field label
+        for opt_num in range(4):
+            opt_str = f"Option {opt_num}"
+            if opt_str in summary:
+                # Every occurrence of 'Option X' must be wrapped in ' (Option X)' preceded by words
+                matches = re.finditer(re.escape(opt_str), summary)
+                for m in matches:
+                    start = m.start()
+                    prefix = summary[:start]
+                    assert prefix.endswith("(") and len(prefix.strip(" (")) > 0
+
+        # Model agreement
+        assert set(body["model_agreement"].keys()) == {"tree_count", "share_at_or_above_half", "mean_score"}
+        assert body["model_agreement"]["tree_count"] == len(pipeline.named_steps["classifier"].estimators_)
+        assert body["model_agreement"]["tree_count"] == 400
+
+        # Equivalence with engine and direct pipeline predict_proba
         engine_score = engine.predict_score(sample)
         assert abs(body["score"] - engine_score) < 1e-12, f"Row {idx} score mismatch with engine"
+
+        row_df = pd.DataFrame([sample], columns=expected_cols, dtype=np.float64)
+        direct_prob = float(pipeline.predict_proba(row_df)[0, 1])
+        assert abs(body["score"] - direct_prob) < 1e-12, f"Row {idx} score mismatch with direct pipeline"
 
 
 def test_predict_endpoint_optional_fields_and_warnings():
@@ -82,7 +137,7 @@ def test_predict_endpoint_optional_fields_and_warnings():
 
     # Omit ca and thal
     sample_no_opt = {k: v for k, v in sample.items() if k not in ["ca", "thal"]}
-    sample_no_opt["age"] = 120.0  # Trigger warning
+    sample_no_opt["age"] = 25.0  # Trigger warning: within plausible (18-100), outside training (29-76)
 
     resp = client.post("/api/predict", json={"inputs": sample_no_opt})
     assert resp.status_code == 200
@@ -90,11 +145,11 @@ def test_predict_endpoint_optional_fields_and_warnings():
 
     assert set(body["missing_used"]) == {"ca", "thal"}
     assert len(body["warnings"]) > 0
-    assert any("Age" in w for w in body["warnings"])
+    assert any("age" in w.lower() for w in body["warnings"])
 
 
 def test_predict_endpoint_422_validations():
-    """Test POST /api/predict returns 422 for invalid inputs and extra fields."""
+    """Test POST /api/predict returns 422 for invalid inputs, plausible limits, and extra fields."""
     test_df = engine.load_test_features()
     valid_sample = test_df.iloc[0].to_dict()
 
@@ -116,6 +171,20 @@ def test_predict_endpoint_422_validations():
     # 4. Extra payload field (forbid extra)
     resp = client.post("/api/predict", json={"inputs": valid_sample, "unrecognized_key": 123})
     assert resp.status_code == 422
+
+    # 5. Plausible limit violations rejected with 422
+    assert client.post("/api/predict", json={"inputs": dict(valid_sample, age=150)}).status_code == 422
+    assert client.post("/api/predict", json={"inputs": dict(valid_sample, chol=5000)}).status_code == 422
+    assert client.post("/api/predict", json={"inputs": dict(valid_sample, trestbps=0)}).status_code == 422
+
+    # 6. Accepted within plausible limits with warning (HTTP 200)
+    resp_25 = client.post("/api/predict", json={"inputs": dict(valid_sample, age=25)})
+    assert resp_25.status_code == 200
+    assert any("age" in w.lower() for w in resp_25.json()["warnings"])
+
+    resp_90 = client.post("/api/predict", json={"inputs": dict(valid_sample, age=90)})
+    assert resp_90.status_code == 200
+    assert any("age" in w.lower() for w in resp_90.json()["warnings"])
 
 
 def test_whatif_endpoint_success_and_rejection():

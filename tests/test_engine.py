@@ -135,12 +135,31 @@ def test_validate_inputs_rules():
     assert not res.is_valid
     assert any("cp" in err for err in res.errors)
 
-    # Warn for out of range value (e.g. age=150)
-    sample_out_of_bounds = dict(valid_sample, age=150)
-    res = engine.validate_inputs(sample_out_of_bounds)
-    assert res.is_valid
-    assert len(res.warnings) > 0
-    assert any("Age" in w for w in res.warnings)
+    # Reject out of plausible physiological limits (e.g. age=150, chol=5000, trestbps=0)
+    res_age_150 = engine.validate_inputs(dict(valid_sample, age=150))
+    assert not res_age_150.is_valid
+    assert any("age" in err.lower() for err in res_age_150.errors)
+
+    res_chol_5000 = engine.validate_inputs(dict(valid_sample, chol=5000))
+    assert not res_chol_5000.is_valid
+    assert any("chol" in err.lower() for err in res_chol_5000.errors)
+
+    res_trestbps_0 = engine.validate_inputs(dict(valid_sample, trestbps=0))
+    assert not res_trestbps_0.is_valid
+    assert any("trestbps" in err.lower() for err in res_trestbps_0.errors)
+
+    # Warn for out of training range but inside plausible limits (e.g. age=25, age=90)
+    sample_out_of_train = dict(valid_sample, age=25)
+    res_25 = engine.validate_inputs(sample_out_of_train)
+    assert res_25.is_valid
+    assert len(res_25.warnings) > 0
+    assert any("Age" in w for w in res_25.warnings)
+
+    sample_out_of_train_90 = dict(valid_sample, age=90)
+    res_90 = engine.validate_inputs(sample_out_of_train_90)
+    assert res_90.is_valid
+    assert len(res_90.warnings) > 0
+    assert any("Age" in w for w in res_90.warnings)
 
     # Accept missing ca and thal
     sample_no_ca_thal = {k: v for k, v in valid_sample.items() if k not in ["ca", "thal"]}
@@ -247,3 +266,4 @@ def test_no_emojis_in_engine_api_web():
         text = p.read_text(encoding="utf-8")
         matches = pattern.findall(text)
         assert len(matches) == 0, f"Emoji or pictograph detected in {p}: {matches}"
+
