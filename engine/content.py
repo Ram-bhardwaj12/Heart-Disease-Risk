@@ -25,7 +25,6 @@ TIERS = {
 }
 
 INFERRED_CODES = ["cp", "restecg", "slope", "thal"]
-UNVERIFIED_CODES = INFERRED_CODES  # Backwards compatibility alias
 INFERRED_CODES_NOTE = (
     "Labels for chest pain type, resting ECG, ST slope and thallium test were "
     "inferred by matching the dataset's value counts and disease rates to the "
@@ -77,7 +76,7 @@ FIELD_METADATA = {
     "age": {
         "label": "Age (years)",
         "short_label": "Age",
-        "help": "Patient age in years.",
+        "help": "Your age in years.",
         "group": "basic",
         "type": "number",
         "unit": "years",
@@ -87,7 +86,7 @@ FIELD_METADATA = {
     "sex": {
         "label": "Biological sex",
         "short_label": "Biological sex",
-        "help": "Biological sex (Female or Male).",
+        "help": "As recorded in your medical report.",
         "group": "basic",
         "type": "choice",
         "unit": "",
@@ -97,7 +96,7 @@ FIELD_METADATA = {
     "trestbps": {
         "label": "Resting blood pressure (mm Hg)",
         "short_label": "Resting blood pressure",
-        "help": "Resting blood pressure in mm Hg measured upon hospital admission.",
+        "help": "The top number of a blood pressure reading taken while resting.",
         "group": "basic",
         "type": "number",
         "unit": "mm Hg",
@@ -107,7 +106,7 @@ FIELD_METADATA = {
     "chol": {
         "label": "Serum cholesterol (mg/dl)",
         "short_label": "Cholesterol",
-        "help": "Serum cholesterol measurement in mg/dl.",
+        "help": "Your cholesterol level from a blood test.",
         "group": "basic",
         "type": "number",
         "unit": "mg/dl",
@@ -117,7 +116,7 @@ FIELD_METADATA = {
     "fbs": {
         "label": "Fasting blood sugar > 120 mg/dl",
         "short_label": "Fasting blood sugar",
-        "help": "Indicator whether fasting blood sugar exceeds 120 mg/dl.",
+        "help": "Whether a blood test taken after fasting showed sugar above 120 mg/dl.",
         "group": "basic",
         "type": "choice",
         "unit": "",
@@ -127,7 +126,7 @@ FIELD_METADATA = {
     "cp": {
         "label": "Chest pain type",
         "short_label": "Chest pain type",
-        "help": "Chest pain category (Asymptomatic, Atypical angina, Non-anginal pain, Typical angina).",
+        "help": "The type of chest pain written in your medical report, if any.",
         "group": "report",
         "type": "choice",
         "unit": "",
@@ -137,7 +136,7 @@ FIELD_METADATA = {
     "restecg": {
         "label": "Resting ECG",
         "short_label": "Resting ECG",
-        "help": "Resting electrocardiographic result (Left ventricular hypertrophy, Normal, ST-T wave abnormality).",
+        "help": "The result of a resting heart tracing (ECG) in your medical report.",
         "group": "report",
         "type": "choice",
         "unit": "",
@@ -147,7 +146,7 @@ FIELD_METADATA = {
     "thalach": {
         "label": "Maximum heart rate achieved (bpm)",
         "short_label": "Maximum heart rate",
-        "help": "Maximum heart rate achieved during exercise testing in beats per minute.",
+        "help": "The highest heart rate reached during an exercise stress test.",
         "group": "report",
         "type": "number",
         "unit": "bpm",
@@ -157,7 +156,7 @@ FIELD_METADATA = {
     "exang": {
         "label": "Exercise-induced angina",
         "short_label": "Exercise-induced angina",
-        "help": "Indicator whether angina was induced during exercise testing.",
+        "help": "Whether exercise brought on chest pain during a stress test.",
         "group": "report",
         "type": "choice",
         "unit": "",
@@ -167,7 +166,7 @@ FIELD_METADATA = {
     "oldpeak": {
         "label": "ST depression (mm)",
         "short_label": "ST depression",
-        "help": "ST depression induced by exercise relative to rest in millimeters.",
+        "help": "A stress-test reading, written as ST depression in your report.",
         "group": "report",
         "type": "number",
         "unit": "mm",
@@ -177,7 +176,7 @@ FIELD_METADATA = {
     "slope": {
         "label": "ST slope",
         "short_label": "ST slope",
-        "help": "ST slope (Downsloping, Flat, Upsloping).",
+        "help": "The shape of the ST segment at peak exercise, as written in your report.",
         "group": "report",
         "type": "choice",
         "unit": "",
@@ -187,7 +186,7 @@ FIELD_METADATA = {
     "ca": {
         "label": "Number of major vessels (0-3)",
         "short_label": "Number of major vessels",
-        "help": "Number of major blood vessels colored by fluoroscopy (0 to 3). Optional field.",
+        "help": "The number of major blood vessels (0 to 3) shown in a fluoroscopy scan, from your report.",
         "group": "report",
         "type": "choice",
         "unit": "",
@@ -197,7 +196,7 @@ FIELD_METADATA = {
     "thal": {
         "label": "Thallium stress test result",
         "short_label": "Thallium stress test result",
-        "help": "Thallium stress test result (Fixed defect, Normal, Reversible defect). Optional field.",
+        "help": "The result of a thallium stress test, from your report.",
         "group": "report",
         "type": "choice",
         "unit": "",

@@ -48,7 +48,7 @@ export function createField(spec, initialValue, onChange, inferredNote = "") {
   // 2. Help text
   if (spec.help) {
     const help = document.createElement("p");
-    help.className = "field-help";
+    help.className = "field-help field-help-text";
     help.textContent = spec.help;
     wrapper.appendChild(help);
   }
@@ -109,7 +109,7 @@ export function createField(spec, initialValue, onChange, inferredNote = "") {
     const hint = document.createElement("div");
     hint.className = "field-hint";
     const unitStr = spec.unit ? ` ${spec.unit}` : "";
-    hint.textContent = `Allowed range: ${spec.min} - ${spec.max}${unitStr}`;
+    hint.textContent = `Range: ${Math.round(spec.min)} to ${Math.round(spec.max)}${unitStr}`;
     wrapper.appendChild(hint);
   }
 

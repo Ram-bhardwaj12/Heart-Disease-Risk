@@ -27,7 +27,6 @@ from engine.content import (
     PRODUCT_NAME,
     REQUIRED_FIELDS,
     TAGLINE,
-    UNVERIFIED_CODES,
     build_summary,
 )
 from engine.core import (
@@ -145,7 +144,6 @@ def get_schema():
         "cutoffs": {"low": low_c, "high": high_c},
         "inferred_codes": INFERRED_CODES,
         "inferred_codes_note": INFERRED_CODES_NOTE,
-        "unverified_codes": UNVERIFIED_CODES,
         "fields": fields_list,
         "field_specs": specs,
     }
@@ -305,6 +303,13 @@ def model_info_endpoint():
     eval_summary = load_evaluation_summary()
     shap_summ = load_shap_summary()
 
+    # Preprocessing summary
+    prep_path = REPO_ROOT / "reports" / "preprocessing_summary.json"
+    prep_summary = {}
+    if prep_path.exists():
+        with open(prep_path, "r", encoding="utf-8") as f:
+            prep_summary = json.load(f)
+
     # Training history
     th_path = REPO_ROOT / "models" / "training_history.json"
     training_history = {}
@@ -361,8 +366,17 @@ def model_info_endpoint():
     # Top 5 grouped SHAP features
     top5_shap = shap_summ.get("rankings", {}).get("grouped_13_original_features", [])[:5]
 
+    preprocessing_facts = {
+        "invalid_codes_replaced": prep_summary.get("invalid_codes_replaced", {}),
+        "split": {
+            "train_rows": 241,
+            "test_rows": 61,
+        },
+    }
+
     return {
         "dataset_facts": dataset_facts,
+        "preprocessing": preprocessing_facts,
         "cross_validation": cv_table,
         "held_out_test": primary_res,
         "confusion_matrices": confusion_matrices,

@@ -37,6 +37,10 @@ def test_schema_endpoint():
     assert "Cleveland" in data["inferred_codes_note"]
     assert len(data["fields"]) == 13
 
+    # Ensure unverified_codes is cleanly removed and no key contains "unverified"
+    for k in data.keys():
+        assert "unverified" not in k.lower()
+
     # Check key features present and short_label format
     field_keys = [f["key"] for f in data["fields"]]
     assert "age" in field_keys
@@ -309,6 +313,9 @@ def test_model_info_endpoint():
     assert "dataset_facts" in data
     assert data["dataset_facts"]["raw_rows"] == audit["raw_rows"]
     assert data["dataset_facts"]["unique_rows"] == audit["unique_rows"]
+    assert "preprocessing" in data
+    assert "invalid_codes_replaced" in data["preprocessing"]
+    assert "split" in data["preprocessing"]
     assert "cross_validation" in data
     assert "held_out_test" in data
     assert "confusion_matrices" in data

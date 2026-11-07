@@ -42,7 +42,7 @@ body {
   outline-offset: 3px;
 }
 
-/* Typography Primitives */
+/* Typography Primitives (strictly matching scale: 48, 36, 28, 20, 16, 14 px) */
 h1, h2, h3, h4 {
   color: var(--color-ink);
   line-height: var(--line-height-tight);
@@ -51,38 +51,57 @@ h1, h2, h3, h4 {
   overflow-wrap: anywhere;
 }
 
-h1 { font-size: var(--font-size-xl); }
-h2 { font-size: var(--font-size-lg); }
-h3 { font-size: var(--font-size-md); }
-h4 { font-size: var(--font-size-base); }
+h1 {
+  font-size: var(--font-size-h1-mobile); /* 30px */
+}
 
 @media (min-width: 640px) {
-  h1 { font-size: var(--font-size-xxl); }
-  h2 { font-size: var(--font-size-xl); }
-  h3 { font-size: var(--font-size-lg); }
+  h1 {
+    font-size: var(--font-size-h1); /* 36px */
+  }
 }
 
-@media (min-width: 900px) {
-  h1 { font-size: var(--font-size-huge); }
-  h2 { font-size: var(--font-size-xxl); }
+.hero-title {
+  font-size: var(--font-size-hero-mobile); /* 36px */
 }
 
-p {
-  color: var(--color-ink);
-  font-size: var(--font-size-base);
+@media (min-width: 640px) {
+  .hero-title {
+    font-size: var(--font-size-hero); /* 48px */
+  }
+}
+
+h2 {
+  font-size: var(--font-size-h2-mobile); /* 24px */
+}
+
+@media (min-width: 640px) {
+  h2 {
+    font-size: var(--font-size-h2); /* 28px */
+  }
+}
+
+h3 {
+  font-size: var(--font-size-h3); /* 20px */
+}
+
+h4 {
+  font-size: var(--font-size-body); /* 16px */
+}
+
+p, body, button, input, select, textarea {
+  font-size: var(--font-size-body); /* 16px */
   line-height: var(--line-height-normal);
-  overflow-wrap: anywhere;
 }
 
-.text-muted {
-  color: var(--color-muted);
-  font-size: var(--font-size-sm);
+small, .text-small, .text-muted, .field-hint {
+  font-size: var(--font-size-small); /* 14px */
 }
 
 /* Layout Containers */
 .container {
   width: 100%;
-  max-width: var(--max-width);
+  max-width: var(--container);
   margin-inline: auto;
   padding-inline: var(--space-2);
 }

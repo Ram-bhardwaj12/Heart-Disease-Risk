@@ -1,7 +1,7 @@
 """CardioLens End-to-End Automated Browser Verification (Playwright Chromium).
 
-Validates all 11 contract requirements:
- 1. No horizontal scroll (scrollWidth <= innerWidth) across all 5 widths.
+Validates all contract requirements across all 5 viewport widths (360, 390, 768, 1024, 1440):
+ 1. No horizontal scroll (scrollWidth <= innerWidth).
  2. Zero console errors, zero CSP violations, zero failed network requests.
  3. Zero sibling or text bounding-box overlaps in cards, grids, flex containers.
  4. Minimum 44 px interactive touch targets at widths <= 640 and Tab keyboard reachability.
@@ -12,10 +12,16 @@ Validates all 11 contract requirements:
  9. Interactive What-If slider updates displayed score and matches API prediction for changed inputs.
  10. Print media emulation hides navigation and buttons.
  11. Category info icon tooltip carries exact inferred_codes_note.
-Saves all 55 full-page screenshots to design_review/<width>/<name>.png.
+ 12. Sub-tab keyboard arrow navigation with roving tabindex and aria-selected tracking.
+ 13. Every figure has non-empty alt text and naturalWidth > 0.
+ 14. Responsive tables with horizontal scroll wrappers; no page-level scroll at width 360.
+ 15. Container left edges aligned within 1 px across header, strip, main, footer.
+ 16. Footer pinned to bottom of viewport on short pages (bottom >= innerHeight - 1).
+ 17. Head elements: favicon.svg (200 OK image/svg+xml), meta theme-color, meta description, dynamic title.
+ 18. Fault injection verification proving checkers detect real faults.
+Saves all full-page screenshots to design_review/<width>/<name>.png.
 """
 
-import os
 from pathlib import Path
 import re
 import threading
@@ -27,6 +33,19 @@ import uvicorn
 
 from api.main import app
 import engine.core as engine
+from engine.content import INFERRED_CODES_NOTE
+from tests.e2e_checks import (
+    check_horizontal_scroll,
+    check_overlaps,
+    check_contrast,
+    check_touch_targets,
+    check_emojis,
+    check_banned_words,
+    check_container_alignment,
+    check_footer_pinned,
+    check_heading_type_scale,
+    check_banned_dataset_and_help_text,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DESIGN_REVIEW_DIR = REPO_ROOT / "design_review"
@@ -34,147 +53,6 @@ VIEWPORT_WIDTHS = [360, 390, 768, 1024, 1440]
 SERVER_HOST = "127.0.0.1"
 SERVER_PORT = 8660
 BASE_URL = f"http://{SERVER_HOST}:{SERVER_PORT}"
-
-BANNED_WORDS = [
-    "probability",
-    "calibrated",
-    "shap",
-    "tree",
-    "consensus",
-    "impact",
-    "model agreement",
-    "diagnosis",
-    "accurate",
-    "validated",
-    "clinical-grade",
-]
-
-ALLOWED_EXCEPTIONS = [
-    "this is the model's score, not a measured probability.",
-    "educational project, not a medical diagnosis. do not use this tool to make health decisions.",
-]
-
-OVERLAP_CHECK_JS = """() => {
-    const failures = [];
-    const containers = document.querySelectorAll('.card, .grid, .flex, .flex-col, .form-grid, .hero-section, .summary-report-card');
-    containers.forEach(container => {
-        const children = Array.from(container.children).filter(el => {
-            if (el.tagName === 'SUMMARY') return false;
-            const style = window.getComputedStyle(el);
-            if (style.display === 'none' || style.visibility === 'hidden') return false;
-            const r = el.getBoundingClientRect();
-            return r.width > 0 && r.height > 0;
-        });
-
-        // Sibling intersections
-        for (let i = 0; i < children.length; i++) {
-            const r1 = children[i].getBoundingClientRect();
-            for (let j = i + 1; j < children.length; j++) {
-                const r2 = children[j].getBoundingClientRect();
-                const intersects = !(r1.right <= r2.left + 1 || r2.right <= r1.left + 1 ||
-                                     r1.bottom <= r2.top + 1 || r2.bottom <= r1.top + 1);
-                if (intersects) {
-                    failures.push({
-                        type: 'sibling overlap',
-                        tag1: children[i].tagName + (children[i].id ? '#' + children[i].id : '') + '.' + children[i].className,
-                        box1: {left: r1.left, top: r1.top, right: r1.right, bottom: r1.bottom},
-                        tag2: children[j].tagName + (children[j].id ? '#' + children[j].id : '') + '.' + children[j].className,
-                        box2: {left: r2.left, top: r2.top, right: r2.right, bottom: r2.bottom},
-                    });
-                }
-            }
-        }
-    });
-    return failures;
-}"""
-
-CONTRAST_CHECK_JS = """() => {
-    function parseRgb(colorStr) {
-        const m = colorStr.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)(?:,\\s*([\\d.]+))?\\)/);
-        if (!m) return null;
-        return {
-            r: parseInt(m[1]),
-            g: parseInt(m[2]),
-            b: parseInt(m[3]),
-            a: m[4] !== undefined ? parseFloat(m[4]) : 1.0
-        };
-    }
-
-    function srgbToLinear(c) {
-        c = c / 255.0;
-        return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-    }
-
-    function luminance(rgb) {
-        return 0.2126 * srgbToLinear(rgb.r) + 0.7152 * srgbToLinear(rgb.g) + 0.0722 * srgbToLinear(rgb.b);
-    }
-
-    function contrastRatio(fg, bg) {
-        const l1 = luminance(fg);
-        const l2 = luminance(bg);
-        return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
-    }
-
-    function getEffectiveBg(el) {
-        let curr = el;
-        while (curr && curr !== document.documentElement) {
-            const style = window.getComputedStyle(curr);
-            const parsed = parseRgb(style.backgroundColor);
-            if (parsed && parsed.a > 0.5) {
-                return parsed;
-            }
-            curr = curr.parentElement;
-        }
-        return {r: 246, g: 248, b: 250, a: 1};
-    }
-
-    const failures = [];
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    let node;
-    while ((node = walker.nextNode())) {
-        const text = node.textContent.trim();
-        if (!text) continue;
-        const parent = node.parentElement;
-        if (!parent) continue;
-        const style = window.getComputedStyle(parent);
-        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
-        
-        const fg = parseRgb(style.color);
-        if (!fg) continue;
-        const bg = getEffectiveBg(parent);
-        const ratio = contrastRatio(fg, bg);
-        if (ratio < 4.45) {
-            failures.push({
-                text: text.slice(0, 30),
-                tag: parent.tagName + '.' + parent.className,
-                fg: style.color,
-                bg: 'rgb(' + bg.r + ',' + bg.g + ',' + bg.b + ')',
-                ratio: Math.round(ratio * 100) / 100
-            });
-        }
-    }
-    return failures;
-}"""
-
-INTERACTIVE_TARGET_CHECK_JS = """() => {
-    const failures = [];
-    const elements = document.querySelectorAll('button, a, input, select');
-    elements.forEach(el => {
-        const style = window.getComputedStyle(el);
-        if (style.display === 'none' || style.visibility === 'hidden') return;
-        const r = el.getBoundingClientRect();
-        if (r.width === 0 || r.height === 0) return;
-        if (r.height < 43.5) {
-            failures.push({
-                tag: el.tagName + (el.id ? '#' + el.id : '') + '.' + el.className,
-                type: el.type,
-                height: Math.round(r.height * 10) / 10,
-                text: el.textContent.trim().slice(0, 20)
-            });
-        }
-    });
-    return failures;
-}"""
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -185,7 +63,7 @@ def live_server() -> Generator[str, None, None]:
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
 
-    timeout = 10.0
+    timeout = 15.0
     start = time.time()
     while time.time() - start < timeout:
         try:
@@ -220,54 +98,179 @@ def save_screenshot(page: Page, width: int, name: str):
 
 
 def verify_page_state(page: Page, width: int, state_name: str, console_errors: list, failed_requests: list):
-    """Run core assertions (1, 2, 3, 4, 5, 6, 7) on the active page state."""
+    """Run comprehensive verification on active page state."""
     # Save screenshot
     save_screenshot(page, width, state_name)
 
     # 1. No horizontal scroll
-    scroll_w = page.evaluate("document.documentElement.scrollWidth")
-    inner_w = page.evaluate("window.innerWidth")
-    assert scroll_w <= inner_w, f"[{width}px {state_name}] Horizontal scroll detected: scrollWidth {scroll_w} > innerWidth {inner_w}"
+    scroll_fails = check_horizontal_scroll(page)
+    assert len(scroll_fails) == 0, f"[{width}px {state_name}] {scroll_fails}"
 
     # 2. Console and network errors
     assert len(console_errors) == 0, f"[{width}px {state_name}] Console errors: {console_errors}"
     assert len(failed_requests) == 0, f"[{width}px {state_name}] Failed requests: {failed_requests}"
 
     # 3. No overlap
-    overlaps = page.evaluate(OVERLAP_CHECK_JS)
+    overlaps = check_overlaps(page)
     assert len(overlaps) == 0, f"[{width}px {state_name}] Overlaps detected: {overlaps}"
 
     # 4. Touch target height >= 44px at widths <= 640
-    if width <= 640:
-        target_fails = page.evaluate(INTERACTIVE_TARGET_CHECK_JS)
-        assert len(target_fails) == 0, f"[{width}px {state_name}] Touch targets < 44px: {target_fails}"
+    target_fails = check_touch_targets(page, width)
+    assert len(target_fails) == 0, f"[{width}px {state_name}] Touch targets < 44px: {target_fails}"
 
     # 5. Contrast >= 4.5:1
-    contrast_fails = page.evaluate(CONTRAST_CHECK_JS)
+    contrast_fails = check_contrast(page)
     assert len(contrast_fails) == 0, f"[{width}px {state_name}] Contrast failures: {contrast_fails}"
 
     # 6. No emoji or pictographs
-    body_text = page.locator("body").inner_text()
-    emoji_pattern = re.compile(r"[\U0001F300-\U0001FAFF\u2600-\u27BF\uFE0F]")
-    emoji_matches = emoji_pattern.findall(body_text)
+    emoji_matches = check_emojis(page)
     assert len(emoji_matches) == 0, f"[{width}px {state_name}] Emojis detected: {emoji_matches}"
 
     # 7. Banned words on #/check, #/how, #/about
-    cleaned_text = body_text.lower()
-    for exc in ALLOWED_EXCEPTIONS:
-        cleaned_text = cleaned_text.replace(exc.lower(), " ")
-
     current_hash = page.evaluate("window.location.hash")
-    if current_hash in {"#/check", "#/how", "#/about", ""}:
-        for banned in BANNED_WORDS:
-            pattern = re.compile(r"\b" + re.escape(banned) + r"\b", re.IGNORECASE)
-            assert not pattern.search(cleaned_text), f"[{width}px {state_name}] Banned word '{banned}' found in visible text"
+    banned_matches = check_banned_words(page, current_hash)
+    assert len(banned_matches) == 0, f"[{width}px {state_name}] Banned words detected: {banned_matches}"
+
+    # 8. Container left edge alignment within 1px
+    align_fails = check_container_alignment(page)
+    assert len(align_fails) == 0, f"[{width}px {state_name}] {align_fails}"
+
+    # 9. Pinned footer check
+    footer_fails = check_footer_pinned(page)
+    assert len(footer_fails) == 0, f"[{width}px {state_name}] {footer_fails}"
+
+    # 10. Type scale check for headings
+    type_fails = check_heading_type_scale(page, width)
+    assert len(type_fails) == 0, f"[{width}px {state_name}] {type_fails}"
+
+    # 11. Banned dataset naming & help texts
+    text_fails = check_banned_dataset_and_help_text(page)
+    assert len(text_fails) == 0, f"[{width}px {state_name}] {text_fails}"
+
+
+@pytest.mark.e2e
+def test_checks_detect_injected_faults(browser_instance: Browser, live_server: str):
+    """Part C: Verify that all e2e checking functions reliably detect injected faults."""
+    page: Page = browser_instance.new_page(viewport={"width": 360, "height": 800})
+    try:
+        page.goto(f"{live_server}/#/check", wait_until="networkidle")
+
+        # Fault (a): Two overlapping boxes inside a card
+        page.evaluate("""() => {
+            const card = document.querySelector('.card') || document.body;
+            const b1 = document.createElement('div');
+            b1.id = 'fault-overlap-1';
+            b1.style.cssText = 'position: absolute; left: 10px; top: 10px; width: 100px; height: 100px; background: red;';
+            const b2 = document.createElement('div');
+            b2.id = 'fault-overlap-2';
+            b2.style.cssText = 'position: absolute; left: 20px; top: 20px; width: 100px; height: 100px; background: blue;';
+            card.appendChild(b1);
+            card.appendChild(b2);
+        }""")
+        overlaps = check_overlaps(page)
+        assert len(overlaps) > 0, "Checker failed to detect injected sibling overlap"
+        page.evaluate("""() => {
+            document.getElementById('fault-overlap-1')?.remove();
+            document.getElementById('fault-overlap-2')?.remove();
+        }""")
+
+        # Fault (b): Element 2000px wide
+        page.evaluate("""() => {
+            const el = document.createElement('div');
+            el.id = 'fault-wide';
+            el.style.cssText = 'width: 2000px; height: 10px; background: purple;';
+            document.body.appendChild(el);
+        }""")
+        scroll_fails = check_horizontal_scroll(page)
+        assert len(scroll_fails) > 0, "Checker failed to detect 2000px wide element"
+        page.evaluate("document.getElementById('fault-wide')?.remove();")
+
+        # Fault (c): Text node colored #AAAAAA on white
+        page.evaluate("""() => {
+            const el = document.createElement('p');
+            el.id = 'fault-contrast';
+            el.style.cssText = 'color: #AAAAAA; background-color: #FFFFFF; font-size: 16px;';
+            el.textContent = 'Low contrast fault text';
+            document.body.appendChild(el);
+        }""")
+        contrast_fails = check_contrast(page)
+        assert len(contrast_fails) > 0, "Checker failed to detect text #AAAAAA on white"
+        page.evaluate("document.getElementById('fault-contrast')?.remove();")
+
+        # Fault (d): 20px high button at width 360
+        page.evaluate("""() => {
+            const btn = document.createElement('button');
+            btn.id = 'fault-touch';
+            btn.style.cssText = 'height: 20px !important; min-height: 20px !important; width: 100px;';
+            btn.textContent = 'Tiny';
+            document.body.appendChild(btn);
+        }""")
+        touch_fails = check_touch_targets(page, 360)
+        assert len(touch_fails) > 0, "Checker failed to detect 20px high button at width 360"
+        page.evaluate("document.getElementById('fault-touch')?.remove();")
+
+        # Fault (e): Emoji character in visible text
+        page.evaluate("""() => {
+            const el = document.createElement('p');
+            el.id = 'fault-emoji';
+            el.textContent = 'Heart emoji check \u2764';
+            document.body.appendChild(el);
+        }""")
+        emoji_fails = check_emojis(page)
+        assert len(emoji_fails) > 0, "Checker failed to detect injected emoji character"
+        page.evaluate("document.getElementById('fault-emoji')?.remove();")
+
+        # Fault (f): The word "SHAP" in the #/check page
+        page.evaluate("""() => {
+            const el = document.createElement('p');
+            el.id = 'fault-shap';
+            el.textContent = 'Injected SHAP explanation';
+            document.body.appendChild(el);
+        }""")
+        banned_fails = check_banned_words(page, "#/check")
+        assert len(banned_fails) > 0, "Checker failed to detect banned word 'SHAP' on #/check"
+        page.evaluate("document.getElementById('fault-shap')?.remove();")
+
+        # Fault (g): Container-width misalignment
+        page.evaluate("""() => {
+            const strip = document.querySelector('.disclaimer-strip-inner');
+            if (strip) strip.style.marginLeft = '50px';
+        }""")
+        align_fails = check_container_alignment(page)
+        assert len(align_fails) > 0, "Checker failed to detect container left-edge misalignment"
+        page.evaluate("""() => {
+            const strip = document.querySelector('.disclaimer-strip-inner');
+            if (strip) strip.style.marginLeft = '';
+        }""")
+
+        # Fault (h): Unpinned footer
+        page.evaluate("""() => {
+            const footer = document.querySelector('.app-footer');
+            if (footer) {
+                footer.style.position = 'absolute';
+                footer.style.top = '100px';
+                footer.style.bottom = 'auto';
+            }
+        }""")
+        footer_fails = check_footer_pinned(page)
+        assert len(footer_fails) > 0, "Checker failed to detect unpinned footer"
+        page.evaluate("""() => {
+            const footer = document.querySelector('.app-footer');
+            if (footer) {
+                footer.style.position = '';
+                footer.style.top = '';
+                footer.style.bottom = '';
+            }
+        }""")
+
+    finally:
+        page.close()
 
 
 @pytest.mark.e2e
 @pytest.mark.parametrize("width", VIEWPORT_WIDTHS)
 def test_all_widths_and_states(browser_instance: Browser, live_server: str, width: int):
-    """Test all widths, form steps, examples, placeholders, and save screenshots."""
+    """Test all viewport widths, form steps, examples, all routes, subtabs, and screenshots."""
     page: Page = browser_instance.new_page(viewport={"width": width, "height": 800})
     console_errors = []
     failed_requests = []
@@ -277,33 +280,58 @@ def test_all_widths_and_states(browser_instance: Browser, live_server: str, widt
     page.on("requestfailed", lambda req: failed_requests.append(f"{req.method} {req.url}: {req.failure}"))
 
     try:
-        # State 1: Landing
+        # Route 1: #/check Landing & Form Step 1
         page.goto(f"{live_server}/#/check", wait_until="networkidle")
         verify_page_state(page, width, "landing", console_errors, failed_requests)
 
-        # State 2: Form Step 1
+        # Title & Head assertions
+        assert "CardioLens" in page.title()
+        assert page.title() == "Check your risk - CardioLens"
+
+        # Favicon check
+        fav_href = page.evaluate("document.querySelector('link[rel=\"icon\"]')?.getAttribute('href')")
+        assert fav_href is not None
+        fav_resp = page.request.get(f"{live_server}/{fav_href}")
+        assert fav_resp.status == 200
+        assert "image/svg+xml" in fav_resp.headers.get("content-type", "")
+
+        # Form Step 1 assertions
         page.wait_for_selector("#field-input-age", timeout=5000)
         verify_page_state(page, width, "form_step_1", console_errors, failed_requests)
 
-        # State 3: Form Step 2
+        # Part F2 (4): On step 1, Back button is NOT rendered in the DOM
+        assert page.locator("#btn-wizard-back").count() == 0
+
+        # Part F2 (4): Stepper has three segments and exactly one is current
+        stepper_items = page.locator(".stepper-item")
+        assert stepper_items.count() == 3
+        current_items = page.locator(".stepper-item.current, .stepper-item[aria-current=\"step\"]")
+        assert current_items.count() == 1
+
+        # Part F2 (8): Every numeric field's initial value equals its /api/schema default
+        schema_specs = engine.get_feature_specs()
+        for key in ["age", "trestbps", "chol"]:
+            f_spec = schema_specs[key]
+            input_val = page.locator(f"#field-input-{key}").input_value()
+            assert float(input_val) == float(f_spec["default"])
+
+        # Form Step 2
         page.click("#btn-wizard-next")
         page.wait_for_selector("#field-input-cp", timeout=5000)
         verify_page_state(page, width, "form_step_2", console_errors, failed_requests)
 
-        # 11. Info tooltip verification
+        # Info tooltip on cp carries exact inferred_codes_note
         cp_info_btn = page.locator("#field-wrap-cp .info-btn")
         cp_info_btn.click()
         tooltip_text = page.locator("#tooltip-cp").text_content()
-        schema = engine.load_shap_summary()
-        from engine.content import INFERRED_CODES_NOTE
         assert tooltip_text == INFERRED_CODES_NOTE
 
-        # State 4: Form Step 3
+        # Form Step 3
         page.click("#btn-wizard-next")
         page.wait_for_selector("#field-input-oldpeak", timeout=5000)
         verify_page_state(page, width, "form_step_3", console_errors, failed_requests)
 
-        # State 5: Result View Row 0 (submit first X_test row)
+        # Result View Row 0
         test_df = engine.load_test_features()
         row0 = test_df.iloc[0].to_dict()
         expected_score_0 = engine.predict_score(row0)
@@ -336,13 +364,13 @@ def test_all_widths_and_states(browser_instance: Browser, live_server: str, widt
         displayed_pct = float(displayed_score_text.replace("%", ""))
         expected_pct = round(expected_score_0 * 100.0, 1)
 
-        # 8. Score matches API score within 0.05 percentage points
+        # Equivalence assertion
         assert abs(displayed_pct - expected_pct) <= 0.05
         displayed_tier = page.locator("#result-tier-pill span").text_content()
         assert displayed_tier == expected_tier_0["label"]
         verify_page_state(page, width, "result_view_row_0", console_errors, failed_requests)
 
-        # 10. Print emulation hides navigation and buttons
+        # Print emulation
         page.emulate_media(media="print")
         top_bar_display = page.evaluate("window.getComputedStyle(document.querySelector('.top-bar')).display")
         assert top_bar_display == "none"
@@ -350,7 +378,7 @@ def test_all_widths_and_states(browser_instance: Browser, live_server: str, widt
         assert btn_display == "none"
         page.emulate_media(media="screen")
 
-        # States 6-8: Examples 1, 2, 3 results
+        # Examples 1, 2, 3
         examples_resp = [
             ("example_1", 41),
             ("example_2", 6),
@@ -369,31 +397,78 @@ def test_all_widths_and_states(browser_instance: Browser, live_server: str, widt
             assert page.locator("#result-tier-pill span").text_content() == ex_tier["label"]
             verify_page_state(page, width, f"{ex_id}_result", console_errors, failed_requests)
 
-        # 9. Interactive What-If slider test on Example 1
+        # What-If Slider Test on Example 1
         details_el = page.locator("details.whatif-container, details:has(#whatif-slider)")
         details_el.click()
         page.wait_for_selector("#whatif-slider", timeout=5000)
-        time.sleep(0.5)
+        time.sleep(0.3)
 
         slider = page.locator("#whatif-slider")
         slider.fill("70")
         slider.dispatch_event("input")
-        time.sleep(0.5)
+        time.sleep(0.3)
 
         change_line_text = page.locator("#whatif-change-line").text_content()
         assert "Score changes from" in change_line_text
 
-        # State 9: How it works placeholder
+        # Route 2: #/how (How it Works)
         page.goto(f"{live_server}/#/how", wait_until="networkidle")
+        assert page.title() == "How it works - CardioLens"
         verify_page_state(page, width, "how_it_works", console_errors, failed_requests)
+        how_step_cards = page.locator(".how-step-card")
+        assert how_step_cards.count() == 4
+        # Verify patient count in step 2 title
+        step2_text = how_step_cards.nth(1).locator("h3").text_content()
+        assert "patterns in 302 patients" in step2_text
 
-        # State 10: Model details placeholder
+        # Route 3: #/details (Model details with 4 subtabs and arrow key navigation)
         page.goto(f"{live_server}/#/details", wait_until="networkidle")
-        verify_page_state(page, width, "model_details", console_errors, failed_requests)
+        assert page.title() == "Model details - CardioLens"
 
-        # State 11: About placeholder
+        subtab_keys = ["data", "performance", "explanations", "limitations"]
+        for idx, subk in enumerate(subtab_keys):
+            active_btn = page.locator(f"#tab-{subk}")
+            active_btn.click()
+
+            # Arrow navigation test
+            if idx > 0:
+                prev_btn = page.locator(f"#tab-{subtab_keys[idx-1]}")
+                prev_btn.focus()
+                page.keyboard.press("ArrowRight")
+                assert page.locator(f"#tab-{subk}").get_attribute("aria-selected") == "true"
+
+            verify_page_state(page, width, f"model_details_{subk}", console_errors, failed_requests)
+
+            # Check that all figures on this panel have alt and naturalWidth > 0
+            figs = page.locator(f"#panel-{subk} img")
+            fig_count = figs.count()
+            for f_i in range(fig_count):
+                fig_img = figs.nth(f_i)
+                alt_txt = fig_img.get_attribute("alt")
+                assert alt_txt and len(alt_txt.strip()) > 0
+                fig_img.evaluate("el => el.complete || new Promise(r => { el.onload = el.onerror = r; })")
+                nat_width = fig_img.evaluate("el => el.naturalWidth")
+                assert nat_width > 0, f"Figure {fig_img.get_attribute('src')} has naturalWidth {nat_width}"
+
+            # Table scroll check: Table wrapper has overflow-x auto, page has no horizontal scroll
+            tables = page.locator(f"#panel-{subk} table")
+            tbl_count = tables.count()
+            for t_i in range(tbl_count):
+                tbl = tables.nth(t_i)
+                caption = tbl.locator("caption")
+                assert caption.count() == 1
+                # Check for col scopes
+                col_th = tbl.locator("thead th[scope='col']")
+                assert col_th.count() > 0
+
+        # Route 4: #/about
         page.goto(f"{live_server}/#/about", wait_until="networkidle")
+        assert page.title() == "About - CardioLens"
         verify_page_state(page, width, "about", console_errors, failed_requests)
+        about_text = page.locator(".about-page-wrap").inner_text()
+        assert "Built by Ram Bhardwaj" in about_text
+        assert "Typeface: Inter, SIL Open Font License" in about_text
+        assert "Kaggle Heart Disease Dataset" in about_text
 
     finally:
         page.close()

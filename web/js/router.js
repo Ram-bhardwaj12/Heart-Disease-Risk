@@ -7,6 +7,13 @@
 const routes = {};
 let currentRoute = null;
 
+const ROUTE_TITLES = {
+  "#/check": "Check your risk",
+  "#/how": "How it works",
+  "#/details": "Model details",
+  "#/about": "About",
+};
+
 export function registerRoute(path, handler) {
   routes[path] = handler;
 }
@@ -35,6 +42,9 @@ function handleRouteChange() {
   }
 
   currentRoute = matchedRoute;
+
+  const pageName = ROUTE_TITLES[matchedRoute] || "Check your risk";
+  document.title = `${pageName} - CardioLens`;
 
   // Update navigation link visual states
   document.querySelectorAll(".nav-item-link").forEach((link) => {

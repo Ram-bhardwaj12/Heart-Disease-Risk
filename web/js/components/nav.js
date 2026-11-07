@@ -126,23 +126,24 @@ export function createFooter(modelInfo = null, disclaimerText = "") {
   const container = document.createElement("div");
   container.className = "container footer-inner";
 
+  // Col 1: Product name and tagline
   const nameP = document.createElement("p");
+  nameP.className = "footer-col footer-col-brand";
   nameP.textContent = `${COPY.brand.name} - ${COPY.brand.tagline}`;
   container.appendChild(nameP);
 
-  if (modelInfo && modelInfo.dataset_facts) {
-    const metaP = document.createElement("p");
-    const facts = modelInfo.dataset_facts;
-    metaP.textContent = `Cleveland Heart Disease Dataset (${facts.unique_rows || 302} unique patients analyzed).`;
-    container.appendChild(metaP);
-  }
+  // Col 2: Dataset line
+  const metaP = document.createElement("p");
+  metaP.className = "footer-col footer-col-dataset";
+  const n = (modelInfo && modelInfo.dataset_facts && modelInfo.dataset_facts.unique_rows) ? modelInfo.dataset_facts.unique_rows : 302;
+  metaP.textContent = `Kaggle Heart Disease Dataset, ${n} unique patients`;
+  container.appendChild(metaP);
 
-  if (disclaimerText) {
-    const discP = document.createElement("p");
-    discP.className = "text-muted";
-    discP.textContent = disclaimerText;
-    container.appendChild(discP);
-  }
+  // Col 3: Disclaimer sentence
+  const discP = document.createElement("p");
+  discP.className = "footer-col footer-col-disclaimer text-muted";
+  discP.textContent = disclaimerText || COPY.disclaimer;
+  container.appendChild(discP);
 
   footer.appendChild(container);
   return footer;

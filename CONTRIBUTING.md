@@ -30,22 +30,25 @@ Welcome to the **Early Heart Disease Risk Prediction** project! This guide ensur
 
 ---
 
-## 📁 3. Folder & File Ownership Table
+## 3. Folder & File Ownership Table
 
 To prevent merge conflicts and accidental overwrites, follow this division of ownership:
 
 | Folder / File | Owner | Notes |
 | :--- | :--- | :--- |
-| `src/`, `models/`, `data/processed/` | **Developer** | Core data engineering, feature transformations, model training artifacts. |
-| `notebooks/02_*` and later | **Developer** | Model training, tuning, and SHAP explainability notebooks. |
-| `app/app.py`, `app/utils.py` | **Developer** | App architecture, routing, backend inference, and deployment logic. |
+| `engine/`, `api/` | **Developer** | Core framework-independent engine, business logic, and FastAPI REST endpoints. |
+| `tests/` | **Developer** | Automated unit, API, and Playwright end-to-end verification suites. |
+| `README.md`, `CONTRIBUTING.md`, requirements files | **Developer** | Repository documentation and dependency definitions (`requirements.txt`, `requirements-dev.txt`). |
+| `web/` (`css/`, `js/`, `assets/`) | **Teammate** | Front-end presentation layer, styles, views, components, and client-side assets. |
+| `src/`, `models/`, `data/` | **Developer** | Core data engineering, feature transformations, trained model artifacts (read-only in Phase 2). |
 | `notebooks/01_eda.ipynb` | **Teammate** | Exploratory Data Analysis and statistical visualizations. |
 | `reports/` (Report & PPT) | **Teammate** | Academic project report, slide deck, and presentation assets. |
-| `app/components.py`, `app/views/`, `app/styles.css`, `app/copy.py`, `app/pages/*` | **Teammate** | Front-end UI components, views, styles, and subpages. |
-| `tests/` | **Developer** | Automated logic and prediction safety test suite (`tests/test_logic.py`). |
-| `README.md`, `requirements.txt`, `CONTRIBUTING.md` | **Developer** | Repository-level configurations (propose changes via PR). |
 
-> **Note:** This ownership table can be updated anytime by mutual agreement. **Never edit a file owned by the other person without discussing and confirming with them first.**
+> **Ownership Rule:** UI changes must be made only in `web/`. Run both test commands before every Pull Request and paste the results into the description:
+> ```bash
+> python -m pytest -q
+> python -m pytest -m e2e -q
+> ```
 
 ---
 

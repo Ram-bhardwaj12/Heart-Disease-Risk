@@ -92,7 +92,12 @@ function createHeroSection(state, onSelectExample) {
   startBtn.addEventListener("click", () => {
     const formCard = document.getElementById("assessment-form-card");
     if (formCard) {
-      formCard.scrollIntoView({ behavior: "smooth" });
+      const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      formCard.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth" });
+      const firstInput = formCard.querySelector("input, select, button");
+      if (firstInput) {
+        firstInput.focus();
+      }
     }
   });
   actions.appendChild(startBtn);
@@ -240,20 +245,17 @@ function renderFormStep(formCard, root, stepNumber) {
   const navBar = document.createElement("div");
   navBar.className = "wizard-nav";
 
-  const backBtn = document.createElement("button");
-  backBtn.type = "button";
-  backBtn.className = "btn btn-secondary";
-  backBtn.textContent = COPY.stepper.back;
-  backBtn.id = "btn-wizard-back";
-  backBtn.addEventListener("click", () => {
-    if (stepNumber > 1) {
+  if (stepNumber > 1) {
+    const backBtn = document.createElement("button");
+    backBtn.type = "button";
+    backBtn.className = "btn btn-secondary";
+    backBtn.textContent = COPY.stepper.back;
+    backBtn.id = "btn-wizard-back";
+    backBtn.addEventListener("click", () => {
       renderFormStep(formCard, root, stepNumber - 1);
-    } else {
-      const hero = document.getElementById("hero-overview-section");
-      if (hero) hero.scrollIntoView({ behavior: "smooth" });
-    }
-  });
-  navBar.appendChild(backBtn);
+    });
+    navBar.appendChild(backBtn);
+  }
 
   if (stepNumber < 3) {
     const nextBtn = document.createElement("button");

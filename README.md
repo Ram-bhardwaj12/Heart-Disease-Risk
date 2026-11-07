@@ -7,7 +7,7 @@
 
 ---
 
-## 📌 Project Overview
+## Project Overview
 
 * **Project Title:** Early Heart Disease Risk Prediction using Explainable Machine Learning
 * **Core Concepts:** Supervised Classification, Random Forest Classifier, SHAP (SHapley Additive exPlanations)
@@ -18,7 +18,7 @@ Cardiovascular diseases (CVDs) remain the leading cause of mortality worldwide. 
 
 ---
 
-## 👥 Project Team
+## Project Team
 
 | Role | Member Name & Enrollment | Assigned Responsibilities | Owns |
 | :--- | :--- | :--- | :--- |
@@ -27,7 +27,7 @@ Cardiovascular diseases (CVDs) remain the leading cause of mortality worldwide. 
 
 ---
 
-## 🎯 Problem Statement and Objectives
+## Problem Statement and Objectives
 
 ### Problem Statement
 Heart disease screening is critical for timely clinical intervention and preventive therapy. While standard machine learning algorithms can achieve high statistical performance, healthcare professionals cannot rely on opaque "black-box" predictions when patient care is at stake. To be clinically viable, an automated screening system must not only deliver high diagnostic sensitivity (recall) to minimize missed diagnoses (false negatives) but also provide granular, interpretable explanations for every individual risk prediction.
@@ -41,7 +41,7 @@ Heart disease screening is critical for timely clinical intervention and prevent
 
 ---
 
-## 📊 Dataset Description
+## Dataset Description
 
 The project utilizes the widely studied **Kaggle Heart Disease Dataset** (derived from the classic Cleveland, Hungarian, Switzerland, and Long Beach V databases).
 
@@ -80,7 +80,7 @@ The project utilizes the widely studied **Kaggle Heart Disease Dataset** (derive
 
 ---
 
-## 🛠️ Tech Stack & Tooling
+## Tech Stack & Tooling
 
 * **Python 3.11:** Core execution language offering robust performance, broad library compatibility, and typing stability.
 * **pandas:** High-performance tabular data structures for data ingestion, deduplication, and transformation.
@@ -97,16 +97,16 @@ The project utilizes the widely studied **Kaggle Heart Disease Dataset** (derive
 
 ---
 
-## 🔄 Project Workflow
+## Project Workflow
 
 The project executes through eight sequential, modular phases:
 
 ```
-[Phase 1: Ingestion & Deduplication] ➡️ [Phase 2: EDA] ➡️ [Phase 3: Preprocessing & Split]
-                                                                        ⬇️
-[Phase 6: SHAP Explainability] ⬅️ [Phase 5: Evaluation] ⬅️ [Phase 4: Model Training]
-             ⬇️
-[Phase 7: Streamlit App] ➡️ [Phase 8: Cloud Deployment]
+[Phase 1: Ingestion & Deduplication]  [Phase 2: EDA]  [Phase 3: Preprocessing & Split]
+                                                                        ⬇
+[Phase 6: SHAP Explainability] ⬅ [Phase 5: Evaluation] ⬅ [Phase 4: Model Training]
+             ⬇
+[Phase 7: Streamlit App]  [Phase 8: Cloud Deployment]
 ```
 
 1. **Phase 1: Data Loading, Validation, and Deduplication**
@@ -151,60 +151,52 @@ The project executes through eight sequential, modular phases:
 
 ---
 
-## 💻 Web Application Features
+## CardioLens Web Application
 
-The application features a modern, accessible presentation layer built with Streamlit, custom design system tokens (`app/styles.css`), centralized microcopy (`app/copy.py`), and `st.navigation`:
+The primary presentation layer is **CardioLens**, a responsive single-page web application powered by a framework-independent Python engine (`engine/`) and a high-performance FastAPI backend (`api/`). The front end (`web/`) is built entirely with vanilla HTML, CSS, and ES-module JavaScript—with zero third-party framework dependencies, zero CDN requests, and inline SVG graphics.
 
-* **Structured Multi-Page Navigation:** Modern navigation across 4 dedicated views:
-  * **Risk Estimator:** Patient evaluation console with sidebar inputs and four analytical tabs.
-  * **Model Performance:** Cross-validation and held-out test evaluation benchmarks with 95% bootstrap confidence intervals and threshold comparisons.
-  * **Global Explanations:** Cohort-level TreeSHAP feature attribution beeswarm plots and 13-variable grouped importance rankings.
-  * **About:** Complete data lineage, missing value imputation rules, modeling pipeline architecture, and academic limitations.
-* **Streamlined Clinical Sidebar:**
-  * **Quick Start Profiles:** One-click loading of demonstration patients from the held-out test set (High score patient #41, Low score patient #6, Borderline missed patient #18, and median/mode baseline reset).
-  * **Collapsible Clinical Sections:** Input parameters organized logically into three expandable groups: *Patient Demographics*, *Exercise & Symptoms*, and *Diagnostic Tests*.
-  * **Real-Time Safety Boundary Validation:** Immediate visual alerts when user inputs exceed empirical training ranges.
-* **Interactive Risk Estimator (4 Analytical Tabs):**
-  * **Tab 1: Result:**
-    * **Risk KPI Card & Status Pill:** Displays model score percentage alongside color-coded risk tier badges (🟢 Low Risk $< 0.30$, 🟡 Moderate Risk $0.30 - 0.50$, 🔴 High Risk $\ge 0.50$).
-    * **Visual Risk Meter:** Horizontal graded scale showing low, moderate, and high zones with a dynamic position marker and a popover detailing clinical threshold criteria.
-    * **Model Agreement Consensus:** Analyzes voting behavior across all 400 constituent Decision Trees in the Random Forest, displaying the percentage of trees voting positive and an Altair score distribution histogram.
-  * **Tab 2: Explanation (Grouped TreeSHAP):**
-    * **13-Feature Grouped Local Attribution:** Combines one-hot encoded categories into their respective parent clinical features (e.g., `thal`, `cp`, `slope`, `restecg`) to provide clean, patient-level explanations.
-    * **Interactive Sorting & Filtering:** Filter attributions by direction (*All*, *Raised Risk*, *Lowered Risk*).
-    * **Top Contributor Highlights:** Plain-language summary of the top 3 factors driving the score upward and downward.
-  * **Tab 3: What-If Sensitivity:**
-    * **Counterfactual Response Curves:** Computes and plots real-time score trajectories across 25 grid points for any continuous feature while keeping other inputs fixed.
-    * **Interactive Trial Slider:** Test alternate clinical values on-the-fly and observe simulated risk deltas against baseline.
-  * **Tab 4: Clinical Reports & Export:**
-    * **In-Memory HTML Report:** Downloadable, self-contained single-page clinical summary report with patient inputs, risk tier, agreement metrics, and grouped SHAP attributions.
-    * **CSV Export:** Downloadable tabular file containing inputs, score, risk category, and timestamp.
-* **Persistent Academic Disclaimer:** Verbatim medical disclaimer permanently integrated into the top header strip, report downloads, and standardized footer: *"Educational project, not a medical diagnosis. Do not use this tool to make health decisions."*
+Key features include:
+* **Top Navigation:** Responsive header with route links (`#/check`, `#/how`, `#/details`, `#/about`), mobile drawer toggle, and persistent medical disclaimer banner.
+* **Three-Step Assessment Wizard:** Interactive input form organized into three accessible segments ("About you", "Report, part 1", "Report, part 2") with real-time client-side validation and empirical range indicators.
+* **Result View:** Dynamic risk visualization featuring an animated circular score ring, calibrated risk tier badges (Lower Risk < 0.30, Moderate Risk 0.30 - 0.50, Higher Risk >= 0.50), a visual risk meter bar, and ranked top contributors from local TreeSHAP explanations.
+* **Interactive What-If Sensitivity:** Real-time counterfactual exploration allowing users to adjust continuous parameters via an interactive slider and observe immediate score updates.
+* **Printable Clinical Summary:** Browser print media stylesheet (`web/css/print.css`) that formats patient inputs, risk tier, and key contributing factors into a clean, single-page printable report while hiding navigation bars and buttons.
+* **Model Details Page:** Transparent technical documentation across four horizontal sub-tabs: *Data* (deduplication audit and class balance), *Performance* (held-out metrics, 95% bootstrap intervals, CV benchmarks, operating-point confusion matrix), *Explanations* (top 5 grouped factors and global SHAP summary figures), and *Limitations*.
+
+### Legacy Fallback Application
+The original Streamlit application located in `app/` is maintained as a legacy fallback. It provides multi-page exploration and local inference using Streamlit's native component library.
 
 ---
 
-## 📁 Repository Directory Structure
+## Repository Directory Structure
 
 ```text
 heart-disease-prediction/
+├── api/                     # FastAPI REST API endpoints and schema serialization
+├── engine/                  # Framework-independent pure Python core engine and text
+├── web/                     # CardioLens front end (plain HTML, CSS, vanilla ES-module JS)
+│   ├── css/                 # Design tokens (tokens.css), base styles, components, and print styles
+│   ├── js/                  # Routing, state management, UI components, and page views
+│   ├── assets/              # SVG logos and favicon
+│   └── fonts/               # Self-hosted Inter font and SIL Open Font License
+├── app/                     # Multi-page Streamlit web application (legacy fallback)
+├── src/                     # Production machine learning pipeline (cleaning, training, SHAP)
+├── models/                  # Serialized scikit-learn models and training history
 ├── data/
 │   ├── raw/                 # Original, untouched Kaggle heart.csv
-│   └── processed/           # Deduplicated, cleaned, and split datasets
-├── notebooks/               # Jupyter notebooks for interactive EDA and modeling experiments
-├── src/                     # Reusable production source code (cleaning, training, SHAP utilities)
-├── models/                  # Serialized joblib pipelines, model weights, and explainer objects
-├── app/                     # Multi-page Streamlit web application source code
-├── tests/                   # Automated pytest suite verifying prediction consistency and logic safety
-├── reports/                 # Generated evaluation metrics, figures, and presentation artifacts
-│   └── figures/             # Exported PNG plots (ROC curves, confusion matrices, SHAP charts)
-├── requirements.txt         # Minimal pinned dependencies for production Streamlit deployment
-├── requirements-dev.txt     # Development and research dependencies (EDA, Jupyter, visualization)
-└── README.md                # Comprehensive project documentation and execution guide
+│   └── processed/           # Deduplicated, cleaned, and split datasets (X_train, X_test, etc.)
+├── notebooks/               # Interactive EDA and modeling experiments
+├── tests/                   # Automated pytest suite (unit, API, and Playwright e2e verification)
+├── reports/                 # Evaluation summaries, audit logs, and figure plots
+│   └── figures/             # Exported PNG plots (confusion matrix, ROC curve, SHAP charts)
+├── requirements.txt         # Minimal backend production dependencies
+├── requirements-dev.txt     # Development, testing, and research dependencies
+└── README.md                # Comprehensive project documentation
 ```
 
 ---
 
-## 📅 Project Schedule (Gantt Chart)
+## Project Schedule (Gantt Chart)
 
 ```mermaid
 gantt
@@ -237,7 +229,7 @@ gantt
 
 ---
 
-## 📈 PERT Analysis
+## PERT Analysis
 
 Project Evaluation and Review Technique (PERT) manages task variability and quantifies project duration confidence.
 
@@ -301,8 +293,8 @@ flowchart LR
 ```
 
 > **Diagram Legend:**  
-> * 🔴 **Solid red nodes and arrows:** Critical path (slack = 0)  
-> * ⚪ **Grey node with dashed arrows:** non-critical task (slack > 0)
+> *  **Solid red nodes and arrows:** Critical path (slack = 0)  
+> *  **Grey node with dashed arrows:** non-critical task (slack > 0)
 
 ---
 
@@ -339,7 +331,7 @@ Forward and backward passes evaluate schedule float across the workflow:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome team collaboration! Please consult [CONTRIBUTING.md](CONTRIBUTING.md) for branch guidelines, notebook hygiene, and ownership policies.
 All feature work must be performed on dedicated branches (`feature/<yourname>-<task>`) and merged into `main` exclusively through a reviewed Pull Request.
@@ -347,7 +339,7 @@ Direct commits to `main` are strictly disallowed to prevent merge conflicts and 
 
 ---
 
-## 🚀 Setup and Installation Guide
+## Setup and Installation Guide
 
 ### Prerequisites
 * Python 3.11 or higher
@@ -382,20 +374,39 @@ cd heart-disease-prediction
   pip install -r requirements-dev.txt
   ```
 
-### 4. Launch the Streamlit Application
+### 4. Launch the Web Application
+
+**Primary Application (CardioLens):**
+```bash
+uvicorn api.main:app --port 8600
+```
+Open your web browser and navigate to `http://localhost:8600`.
+
+**Legacy Fallback Application (Streamlit):**
 ```bash
 streamlit run app/app.py
 ```
 Open your web browser and navigate to `http://localhost:8501`.
 
 ### 5. Run the Automated Tests
+
+**Unit and API Tests:**
 ```bash
 python -m pytest -q
 ```
 
+**End-to-End Browser Tests (Playwright Chromium):**
+```bash
+# Requires Playwright Chromium installation:
+playwright install chromium
+
+# Run all browser tests across all viewport widths:
+python -m pytest -m e2e -q
+```
+
 ---
 
-## 🌐 Deployment
+## Deployment
 
 Steps to deploy the web application to Streamlit Community Cloud:
 1. Push all committed changes to GitHub on branch `main`.
@@ -410,7 +421,7 @@ Live app URL: [to be added after deployment]
 
 ---
 
-## 📋 Project Execution Checklist
+## Project Execution Checklist
 
 - [x] **Phase 1:** Data loading, schema validation, and deduplication audit
 - [ ] **Phase 2:** Exploratory data analysis & statistical correlation reporting
@@ -423,7 +434,7 @@ Live app URL: [to be added after deployment]
 
 ---
 
-## 🔬 Experimental Results & Evaluation
+## Experimental Results & Evaluation
 
 *(All fields will be updated upon completion of Phase 1, Phase 4, and Phase 5 experiments).*
 
@@ -489,7 +500,7 @@ Live app URL: [to be added after deployment]
 
 ---
 
-## ⚠️ Limitations
+## Limitations
 
 1. **Small Unique Sample Size:** After purging duplicate patient records, the dataset comprises only approximately 300 unique individuals, limiting statistical power and high-dimensional generalization.
 2. **Single-Source Regional Bias:** Data collection originates from historical clinical cohorts that do not adequately reflect modern heterogeneous demographic, socioeconomic, or regional populations.
@@ -498,7 +509,7 @@ Live app URL: [to be added after deployment]
 
 ---
 
-## 🔮 Future Scope
+## Future Scope
 
 * **External Cohort Validation:** Ingest and benchmark models against modern open medical cohorts (e.g., UK Biobank, PhysioNet, MIMIC-IV).
 * **Deep Tabular Architectures:** Benchmark Random Forest against gradient boosting ensembles (XGBoost, LightGBM, CatBoost) and TabNet architectures.
@@ -507,7 +518,7 @@ Live app URL: [to be added after deployment]
 
 ---
 
-## 📚 References
+## References
 
 1. **Kaggle Dataset Source:** [Heart Disease Dataset (Cleveland & Aggregated)](https://www.kaggle.com/datasets/johnsmith88/heart-disease-dataset).
 2. **Clinical Origin:** Detrano, R., et al. (1989). *International application of a new probability algorithm for the diagnosis of coronary artery disease*. American Journal of Cardiology, 64(5), 304–310. [UCI Machine Learning Repository](https://archive.ics.uci.edu/dataset/45/heart+disease).
@@ -517,6 +528,6 @@ Live app URL: [to be added after deployment]
 
 ---
 
-### ⚖️ Disclaimer
+### Disclaimer
 *This software and associated documentation are developed exclusively for academic and educational evaluation in partial fulfillment of the B.Tech CSE (Machine Learning and Data Science) curriculum at Amity University Madhya Pradesh. It is not an FDA-approved medical diagnostic device and must not be used to direct or determine patient diagnosis, medical management, or clinical interventions.*
 

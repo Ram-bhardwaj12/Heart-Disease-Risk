@@ -25,7 +25,6 @@ from engine.content import (
     REQUIRED_FIELDS,
     TAGLINE,
     TIERS,
-    UNVERIFIED_CODES,
     build_summary,
 )
 

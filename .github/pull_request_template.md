@@ -19,4 +19,5 @@ Before requesting review, ensure all the following checks are complete:
 - [ ] All Jupyter notebooks have been cleared of cell outputs before committing.
 - [ ] `requirements.txt` has been updated (if new dependencies were introduced).
 - [ ] `python -m pytest -q` passes.
+- [ ] `python -m pytest -m e2e -q` passes (if `web/` changed).
 
