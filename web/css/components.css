@@ -557,10 +557,16 @@
 }
 
 .score-ring-number {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   font-size: var(--font-size-xxl);
   font-weight: 800;
   color: var(--color-ink);
   line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .tier-pill {
@@ -700,6 +706,7 @@
 .factor-change-tag {
   font-size: var(--font-size-sm);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .factor-change-tag.raised {
@@ -1027,6 +1034,7 @@ summary:hover {
   font-size: var(--font-size-h2);
   color: var(--color-ink);
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .stat-ci {
