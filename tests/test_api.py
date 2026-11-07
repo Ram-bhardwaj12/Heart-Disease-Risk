@@ -422,3 +422,126 @@ def test_zero_disk_writes_during_requests():
         f for f in before if f in after and before[f] != after[f]
     ]
     assert len(modified_files) == 0, f"Files modified on disk during requests: {modified_files}"
+
+
+def test_ready_endpoint_and_background_loading():
+    """Verify /api/ready endpoint, background model loading, and 503 error handling on loader failure."""
+    import api.main as main_mod
+
+    # 1. Ready endpoint returns 200 with ready=True once loaded
+    resp = client.get("/api/ready")
+    assert resp.status_code == 200
+    assert resp.json() == {"ready": True}
+
+    # 2. Prediction equals direct engine result within 1e-12
+    test_df = engine.load_test_features()
+    sample = test_df.iloc[0].to_dict()
+    clean_sample = {k: (None if (isinstance(v, float) and np.isnan(v)) else v) for k, v in sample.items()}
+
+    resp_pred = client.post("/api/predict", json={"inputs": clean_sample})
+    assert resp_pred.status_code == 200
+    direct_score = engine.predict_score(clean_sample)
+    assert abs(resp_pred.json()["score"] - direct_score) <= 1e-12
+
+    # 3. Simulated failing loader yields 503 and does not crash the server
+    orig_error = main_mod._model_error
+    try:
+        main_mod._model_error = RuntimeError("Simulated loader failure")
+        resp_503 = client.post("/api/predict", json={"inputs": clean_sample})
+        assert resp_503.status_code == 503
+        assert resp_503.json() == {
+            "errors": [
+                {
+                    "field": "",
+                    "message": "The model is still starting. Please try again in a moment.",
+                }
+            ]
+        }
+
+        # Health endpoint still works
+        resp_health = client.get("/api/health")
+        assert resp_health.status_code == 200
+    finally:
+        main_mod._model_error = orig_error
+
+
+def test_whatif_batch_scoring_equivalence():
+    """Verify /api/whatif scores points with one batch predict_proba and equals single-point calls within 1e-12."""
+    test_df = engine.load_test_features()
+    sample = test_df.iloc[0].to_dict()
+    clean_sample = {k: (None if (isinstance(v, float) and np.isnan(v)) else v) for k, v in sample.items()}
+
+    resp = client.post("/api/whatif", json={"inputs": clean_sample, "feature": "age", "n_points": 25})
+    assert resp.status_code == 200
+    curve = resp.json()["curve"]
+    assert len(curve) == 25
+
+    # Check each point matches individual single-point predict_score call within 1e-12
+    for pt in curve:
+        single_input = dict(clean_sample, age=pt["value"])
+        single_score = engine.predict_score(single_input)
+        assert abs(pt["score"] - single_score) <= 1e-12
+
+
+def test_gzip_compression_and_security_headers():
+    """Verify GZipMiddleware compresses large text responses, ignores images, and preserves security headers."""
+    # 1. Text response > 1000 bytes is compressed
+    resp_gzip = client.get("/api/model-info", headers={"Accept-Encoding": "gzip"})
+    assert resp_gzip.status_code == 200
+    assert resp_gzip.headers.get("Content-Encoding") == "gzip"
+
+    # Security headers must be present on gzip responses
+    assert resp_gzip.headers.get("X-Content-Type-Options") == "nosniff"
+    assert resp_gzip.headers.get("Referrer-Policy") == "no-referrer"
+    assert resp_gzip.headers.get("X-Frame-Options") == "DENY"
+    expected_csp = (
+        "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'"
+    )
+    assert resp_gzip.headers.get("Content-Security-Policy") == expected_csp
+
+    # 2. Image response is NOT compressed
+    resp_img = client.get("/figures/confusion_matrix.png", headers={"Accept-Encoding": "gzip"})
+    assert resp_img.status_code == 200
+    assert resp_img.headers.get("Content-Encoding") is None
+    assert resp_img.headers.get("Content-Security-Policy") == expected_csp
+
+
+def test_requirements_api_pinned_identically():
+    """Verify requirements-api.txt contains exact expected packages with identical pins from requirements.txt."""
+    req_path = REPO_ROOT / "requirements.txt"
+    api_req_path = REPO_ROOT / "requirements-api.txt"
+
+    assert req_path.exists()
+    assert api_req_path.exists()
+
+    def parse_pins(p):
+        pins = {}
+        for line in p.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                parts = line.split("==")
+                pins[parts[0].lower()] = line
+        return pins
+
+    main_pins = parse_pins(req_path)
+    api_pins = parse_pins(api_req_path)
+
+    expected_pkgs = {
+        "fastapi",
+        "uvicorn",
+        "pydantic",
+        "pandas",
+        "numpy",
+        "scikit-learn",
+        "shap",
+        "matplotlib",
+        "joblib",
+    }
+    assert set(api_pins.keys()) == expected_pkgs
+
+    for pkg in expected_pkgs:
+        assert pkg in main_pins, f"Package {pkg} missing from requirements.txt"
+        assert api_pins[pkg] == main_pins[pkg], (
+            f"Pin mismatch for {pkg}: {api_pins[pkg]} in requirements-api.txt vs {main_pins[pkg]} in requirements.txt"
+        )
+

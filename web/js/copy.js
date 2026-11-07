@@ -58,6 +58,7 @@ export const COPY = {
     whatIfHeading: "Try a change",
     whatIfScoreChange: (fromVal, toVal) => `Score changes from ${fromVal}% to ${toVal}%`,
     summaryHeading: "Your summary",
+    wakingUp: "The service is waking up. This can take up to a minute.",
     printBtn: "Print or save as PDF",
     copyBtn: "Copy summary",
     copiedFeedback: "Copied to clipboard",

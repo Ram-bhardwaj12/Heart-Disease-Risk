@@ -7,7 +7,7 @@
 
 import { COPY } from "../copy.js";
 import { formatPercent, formatAmountPoints, formatDate } from "../format.js";
-import { predictScore, fetchWhatIf } from "../api.js";
+import { predictScore, fetchWhatIf, pingHealth } from "../api.js";
 import { getState, setInputs, resetInputs } from "../state.js";
 import { createField, setFieldError, clearFieldError } from "../components/field.js";
 import { createStepperHeader } from "../components/stepper.js";
@@ -202,6 +202,8 @@ function createAbstractSvg() {
 // -----------------------------------------------------------------------------
 
 function renderFormStep(formCard, root, stepNumber) {
+  // Fire-and-forget ping to wake up sleeping server when navigating form steps
+  pingHealth();
   formCard.replaceChildren();
   const state = getState();
   const schema = state.schema;

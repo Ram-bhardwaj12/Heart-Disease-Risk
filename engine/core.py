@@ -684,12 +684,14 @@ def tree_agreement(inputs: Any) -> tuple[np.ndarray, float, float]:
     rf_classifier = pipeline.named_steps["classifier"]
 
     row_trans = preprocessor.transform(row_df)
-    row_trans_arr = np.asarray(row_trans)
+    row_trans_arr = np.asarray(row_trans, dtype=np.float32)
 
     tree_scores_list = []
     for tree in rf_classifier.estimators_:
         if tree.n_classes_ == 2:
-            p1 = float(tree.predict_proba(row_trans_arr)[0, 1])
+            val = tree.tree_.predict(row_trans_arr)
+            total = val[0, 0] + val[0, 1]
+            p1 = float(val[0, 1] / total) if total > 0 else 0.0
         else:
             p1 = 1.0 if tree.classes_[0] == 1 else 0.0
         tree_scores_list.append(p1)

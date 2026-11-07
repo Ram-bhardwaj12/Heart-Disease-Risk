@@ -3,7 +3,7 @@
  * Strictly conforms to ES-module architecture. Zero inline scripts, zero inline styles.
  */
 
-import { fetchSchema, fetchExamples, fetchModelInfo } from "./api.js";
+import { fetchSchema, fetchExamples, fetchModelInfo, pingHealth } from "./api.js";
 import { setState, setInputs } from "./state.js";
 import { registerRoute, initRouter } from "./router.js";
 import { createTopBar, createFooter } from "./components/nav.js";
@@ -13,6 +13,8 @@ import { renderDetailsView } from "./views/details.js";
 import { renderAboutView } from "./views/about.js";
 
 async function bootstrap() {
+  // Fire-and-forget health ping on page load to wake up spinning server
+  pingHealth();
   const headerMount = document.getElementById("header-mount");
   const mainMount = document.getElementById("main-mount");
   const footerMount = document.getElementById("footer-mount");

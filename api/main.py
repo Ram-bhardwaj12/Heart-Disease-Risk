@@ -8,9 +8,13 @@ Stateless, zero request body logging, strict security headers, and input validat
 """
 
 import json
+import logging
+import os
 from pathlib import Path
+import threading
 from typing import Any
 import urllib.parse
+from contextlib import asynccontextmanager
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -18,6 +22,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.middleware.gzip import GZipMiddleware, DEFAULT_EXCLUDED_CONTENT_TYPES
 
 from engine.content import (
     DISCLAIMER,
@@ -37,6 +42,8 @@ from engine.core import (
     get_feature_specs,
     load_data_audit_summary,
     load_evaluation_summary,
+    load_model_pipeline,
+    load_shap_explainer,
     load_shap_summary,
     load_test_features,
     predict_score,
@@ -46,6 +53,65 @@ from engine.core import (
     what_if_curve,
 )
 
+logger = logging.getLogger(__name__)
+
+_model_ready = False
+_model_error: Exception | None = None
+_model_ready_event = threading.Event()
+_loader_lock = threading.Lock()
+_loader_started = False
+
+
+def _background_loader():
+    global _model_ready, _model_error
+    try:
+        load_model_pipeline()
+        load_shap_explainer()
+        specs = get_feature_specs()
+        load_data_audit_summary()
+        load_evaluation_summary()
+        load_shap_summary()
+
+        prep_path = REPO_ROOT / "reports" / "preprocessing_summary.json"
+        if prep_path.exists():
+            with open(prep_path, "r", encoding="utf-8") as f:
+                json.load(f)
+
+        warmup_inputs = {k: v["default"] for k, v in specs.items()}
+        predict_score(warmup_inputs)
+        explain_grouped(warmup_inputs)
+        tree_agreement(warmup_inputs)
+        _model_ready = True
+    except Exception as exc:
+        _model_error = exc
+        logger.error("Background model loading failed: %s: %s", exc.__class__.__name__, str(exc))
+    finally:
+        _model_ready_event.set()
+
+
+def start_background_loader():
+    global _loader_started
+    with _loader_lock:
+        if not _loader_started:
+            _loader_started = True
+            t = threading.Thread(target=_background_loader, daemon=True, name="model-loader")
+            t.start()
+
+
+def wait_for_model(timeout: float = 90.0) -> bool:
+    start_background_loader()
+    finished = _model_ready_event.wait(timeout=timeout)
+    if not finished or not _model_ready or _model_error is not None:
+        return False
+    return True
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    start_background_loader()
+    yield
+
+
 MAX_BODY_SIZE = 20 * 1024  # 20 KB limit
 
 app = FastAPI(
@@ -54,6 +120,13 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    GZipMiddleware,
+    minimum_size=1000,
+    exclude_content_types=DEFAULT_EXCLUDED_CONTENT_TYPES + ("image/*",),
 )
 
 
@@ -129,6 +202,12 @@ def health_check():
     return {"status": "ok"}
 
 
+@app.get("/api/ready")
+def ready_check():
+    """Readiness check endpoint."""
+    return {"ready": bool(_model_ready and _model_error is None)}
+
+
 @app.get("/api/schema")
 def get_schema():
     """Field schema, product metadata, decision cut-offs, and inferred codes."""
@@ -183,6 +262,18 @@ def get_examples():
 @app.post("/api/predict")
 def predict_endpoint(payload: PredictPayload):
     """Predict risk score and return tier, local contributions, and summary."""
+    if not wait_for_model(timeout=90.0):
+        return JSONResponse(
+            status_code=503,
+            content={
+                "errors": [
+                    {
+                        "field": "",
+                        "message": "The model is still starting. Please try again in a moment.",
+                    }
+                ]
+            },
+        )
     val_res = validate_inputs(payload.inputs)
     if not val_res.is_valid:
         return JSONResponse(
@@ -252,6 +343,18 @@ def predict_endpoint(payload: PredictPayload):
 @app.post("/api/whatif")
 def whatif_endpoint(payload: WhatIfPayload):
     """Compute sensitivity curve by varying one continuous numeric feature."""
+    if not wait_for_model(timeout=90.0):
+        return JSONResponse(
+            status_code=503,
+            content={
+                "errors": [
+                    {
+                        "field": "",
+                        "message": "The model is still starting. Please try again in a moment.",
+                    }
+                ]
+            },
+        )
     feature = payload.feature
     if feature not in CONTINUOUS_NUMERIC_FEATURES:
         return JSONResponse(

@@ -51,7 +51,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DESIGN_REVIEW_DIR = REPO_ROOT / "design_review"
 VIEWPORT_WIDTHS = [360, 390, 768, 1024, 1440]
 SERVER_HOST = "127.0.0.1"
-SERVER_PORT = 8660
+SERVER_PORT = 8680
 BASE_URL = f"http://{SERVER_HOST}:{SERVER_PORT}"
 
 
@@ -472,3 +472,141 @@ def test_all_widths_and_states(browser_instance: Browser, live_server: str, widt
 
     finally:
         page.close()
+
+
+@pytest.mark.e2e
+def test_front_end_resilience(browser_instance: Browser, live_server: str):
+    """Part D3: Test front-end resilience to spinning/cold server, automatic retry, waking message, and health pings."""
+    # (d) Assert GET /api/health is requested on load and on each step change
+    page_d = browser_instance.new_page(viewport={"width": 1024, "height": 800})
+    try:
+        health_requests = []
+        page_d.on("request", lambda req: health_requests.append(req.url) if "/api/health" in req.url else None)
+
+        page_d.goto(f"{live_server}/#/check", wait_until="domcontentloaded")
+        page_d.wait_for_selector("#field-input-age", timeout=5000)
+        assert len(health_requests) >= 1, "Expected GET /api/health on initial page load"
+
+        load_health_count = len(health_requests)
+        page_d.click("#btn-wizard-next")
+        page_d.wait_for_selector("#field-input-thalach", timeout=5000)
+        assert len(health_requests) > load_health_count, "Expected GET /api/health on step 1 -> 2 transition"
+
+        step2_health_count = len(health_requests)
+        page_d.click("#btn-wizard-next")
+        page_d.wait_for_selector("#field-input-oldpeak", timeout=5000)
+        assert len(health_requests) > step2_health_count, "Expected GET /api/health on step 2 -> 3 transition"
+
+        step3_health_count = len(health_requests)
+        page_d.click("#btn-wizard-back")
+        page_d.wait_for_selector("#field-input-thalach", timeout=5000)
+        assert len(health_requests) > step3_health_count, "Expected GET /api/health on step 3 -> 2 transition"
+
+        verify_page_state(page_d, 1024, "resilience_step_navigation", [], [])
+    finally:
+        page_d.close()
+
+    # (a) Delay /api/predict by 12 seconds, assert waking-up message appears at ~8s and result then renders
+    page_a = browser_instance.new_page(viewport={"width": 1024, "height": 800})
+    try:
+        page_a.route("**/api/predict", lambda route: route.continue_())
+        page_a.goto(f"{live_server}/#/check", wait_until="domcontentloaded")
+        page_a.wait_for_selector("#field-input-age", timeout=5000)
+
+        # Intercept fetch in browser to delay /api/predict by 12 seconds without blocking Playwright loop
+        page_a.evaluate("""() => {
+            const originalFetch = window.fetch;
+            window.fetch = async function(...args) {
+                if (typeof args[0] === 'string' && args[0].includes('/api/predict')) {
+                    await new Promise(r => setTimeout(r, 12000));
+                }
+                return originalFetch.apply(window, args);
+            };
+        }""")
+
+        page_a.click("#btn-example_1")
+
+        # Before 8 seconds: waking notice must not yet exist or be visible
+        time.sleep(3.0)
+        assert not page_a.locator("#waking-up-status-line").is_visible()
+
+        # At ~8 seconds: waking-up notice appears
+        page_a.wait_for_selector("#waking-up-status-line", timeout=8000)
+        waking_text = page_a.locator("#waking-up-status-line").text_content()
+        assert "The service is waking up. This can take up to a minute." in waking_text
+
+        # At ~12 seconds: prediction finishes, waking notice is removed, result renders
+        page_a.wait_for_selector(".score-ring-number", timeout=8000)
+        assert not page_a.locator("#waking-up-status-line").is_visible()
+        assert page_a.locator("#result-tier-pill").is_visible()
+        verify_page_state(page_a, 1024, "resilience_delayed_predict_result", [], [])
+    finally:
+        page_a.close()
+
+    # (b) First /api/predict returns 503 and second succeeds: assert exactly two calls and rendered result
+    page_b = browser_instance.new_page(viewport={"width": 1024, "height": 800})
+    try:
+        calls_503 = []
+
+        def handle_first_503(route):
+            calls_503.append(route.request.url)
+            if len(calls_503) == 1:
+                route.fulfill(
+                    status=503,
+                    content_type="application/json",
+                    body='{"errors":[{"field":"","message":"The model is still starting."}]}',
+                )
+            else:
+                route.continue_()
+
+        page_b.route("**/api/predict", handle_first_503)
+        page_b.goto(f"{live_server}/#/check", wait_until="domcontentloaded")
+        page_b.wait_for_selector("#field-input-age", timeout=5000)
+        page_b.click("#btn-example_1")
+
+        # Automatic retry happens after 3 seconds: result renders
+        page_b.wait_for_selector(".score-ring-number", timeout=12000)
+        assert len(calls_503) == 2, f"Expected exactly two /api/predict calls, got {len(calls_503)}"
+        assert page_b.locator("#result-tier-pill").is_visible()
+        verify_page_state(page_b, 1024, "resilience_auto_retry_success", [], [])
+    finally:
+        page_b.close()
+
+    # (c) Both fail: assert retry card appears with Retry button; clicking Retry then succeeds
+    page_c = browser_instance.new_page(viewport={"width": 1024, "height": 800})
+    try:
+        calls_both = []
+        allow_success = False
+
+        def handle_both_fail(route):
+            calls_both.append(route.request.url)
+            if not allow_success:
+                route.fulfill(
+                    status=503,
+                    content_type="application/json",
+                    body='{"errors":[{"field":"","message":"The model is still starting."}]}',
+                )
+            else:
+                route.continue_()
+
+        page_c.route("**/api/predict", handle_both_fail)
+        page_c.goto(f"{live_server}/#/check", wait_until="domcontentloaded")
+        page_c.wait_for_selector("#field-input-age", timeout=5000)
+        page_c.click("#btn-example_1")
+
+        # Both attempts fail, retry card appears
+        page_c.wait_for_selector("button:has-text('Retry')", timeout=12000)
+        retry_btn = page_c.locator("button:has-text('Retry')")
+        assert retry_btn.is_visible()
+        assert len(calls_both) == 2, f"Expected 2 failed calls before retry card, got {len(calls_both)}"
+        verify_page_state(page_c, 1024, "resilience_retry_card_visible", [], [])
+
+        # Allow success and click Retry button
+        allow_success = True
+        retry_btn.click()
+        page_c.wait_for_selector(".score-ring-number", timeout=8000)
+        assert page_c.locator("#result-tier-pill").is_visible()
+        assert len(calls_both) == 3, f"Expected 3rd call on manual retry, got {len(calls_both)}"
+        verify_page_state(page_c, 1024, "resilience_manual_retry_success", [], [])
+    finally:
+        page_c.close()

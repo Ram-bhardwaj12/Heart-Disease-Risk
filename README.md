@@ -408,14 +408,15 @@ python -m pytest -m e2e -q
 
 ## Deployment
 
-Steps to deploy the web application to Streamlit Community Cloud:
-1. Push all committed changes to GitHub on branch `main`.
-2. Sign in to [Streamlit Community Cloud](https://share.streamlit.io/) with your GitHub account.
-3. Click **New app** and select your repository.
-4. Set **Branch** to `main` and **Main file path** to `app/app.py`.
-5. Under **Advanced settings**, set the **Python version** to `3.11`.
-6. Click **Deploy!** (`requirements.txt` will be installed automatically).
-7. Perform smoke testing: open each page, click all three exemplar patient buttons, modify inputs, and verify display on a mobile phone.
+CardioLens is configured for production hosting on Render (native Python 3 runtime on the free tier with automated build and health checking). Complete step-by-step instructions, blueprint specifications, runtime cold-start characteristics, and verification checklists are documented in [DEPLOYMENT.md](DEPLOYMENT.md).
+
+For cloud deployment using the Render Blueprint:
+1. Ensure all changes are committed and pushed to GitHub on branch `main`.
+2. Connect the repository in Render using the Blueprint configured in `render.yaml` or as a new Web Service using `requirements-api.txt`.
+3. Set the build command to `pip install -r requirements-api.txt` and start command to `uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1`.
+4. Set environment variable `PYTHON_VERSION=3.11.9` and health check path to `/api/health`.
+
+The repository also retains the legacy Streamlit interface in `app/app.py` as an optional fallback for hosting on Streamlit Community Cloud.
 
 Live app URL: [to be added after deployment]
 
