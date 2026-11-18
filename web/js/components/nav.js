@@ -55,7 +55,15 @@ export function createTopBar(disclaimerText = "") {
     desktopUl.appendChild(li);
   });
   desktopNav.appendChild(desktopUl);
-  container.appendChild(desktopNav);
+
+  // Nav Actions container (Theme toggle & Mobile menu)
+  const navActions = document.createElement("div");
+  navActions.className = "nav-actions";
+  navActions.appendChild(desktopNav);
+
+  // Theme Toggle Button
+  const themeToggle = createThemeToggle();
+  navActions.appendChild(themeToggle);
 
   // Mobile Menu Toggle Button (< 900 px)
   const menuBtn = document.createElement("button");
@@ -64,7 +72,9 @@ export function createTopBar(disclaimerText = "") {
   menuBtn.setAttribute("aria-expanded", "false");
   menuBtn.setAttribute("aria-controls", "mobile-menu-panel");
   menuBtn.textContent = COPY.nav.menu;
-  container.appendChild(menuBtn);
+  navActions.appendChild(menuBtn);
+
+  container.appendChild(navActions);
 
   topBar.appendChild(container);
 
@@ -176,6 +186,88 @@ export function createLogoSvg() {
   circle.setAttribute("stroke-width", "2");
   svg.appendChild(circle);
 
+  return svg;
+}
+
+function createThemeToggle() {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "theme-toggle-btn";
+  btn.id = "theme-toggle-btn";
+
+  function updateIcon() {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    const label = isDark ? "Switch to light theme" : "Switch to dark theme";
+    btn.setAttribute("aria-label", label);
+    btn.setAttribute("title", label);
+    btn.replaceChildren(isDark ? createSunSvg() : createMoonSvg());
+  }
+
+  btn.addEventListener("click", () => {
+    const currentTheme = document.documentElement.getAttribute("data-theme") || "light";
+    const nextTheme = currentTheme === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", nextTheme);
+    try {
+      localStorage.setItem("cardiolens_theme", nextTheme);
+    } catch (e) {}
+    updateIcon();
+  });
+
+  updateIcon();
+  return btn;
+}
+
+function createSunSvg() {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("width", "20");
+  svg.setAttribute("height", "20");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+
+  const circle = document.createElementNS(SVG_NS, "circle");
+  circle.setAttribute("cx", "12");
+  circle.setAttribute("cy", "12");
+  circle.setAttribute("r", "4");
+  svg.appendChild(circle);
+
+  const rays = [
+    "M12 2v2",
+    "M12 20v2",
+    "M4.93 4.93l1.41 1.41",
+    "M17.66 17.66l1.41 1.41",
+    "M2 12h2",
+    "M20 12h2",
+    "M4.93 19.07l1.41-1.41",
+    "M17.66 6.34l1.41-1.41",
+  ];
+  rays.forEach((d) => {
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", d);
+    svg.appendChild(path);
+  });
+  return svg;
+}
+
+function createMoonSvg() {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("width", "20");
+  svg.setAttribute("height", "20");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+
+  const path = document.createElementNS(SVG_NS, "path");
+  path.setAttribute("d", "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z");
+  svg.appendChild(path);
   return svg;
 }
 

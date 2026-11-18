@@ -86,3 +86,71 @@
   --transition-fast: 200ms ease;
 }
 
+:root[data-theme="dark"] {
+  /* Colors - Dark Palette */
+  --color-page: #0D1117;
+  --color-surface: #161B22;
+  --color-surface-subtle: #21262D;
+  --color-ink: #F0F6FC;
+  --color-muted: #8B949E;
+  --color-border: #30363D;
+  --color-border-hover: #484F58;
+
+  /* Brand Colors */
+  --color-brand: #26A69A;
+  --color-brand-hover: #4DB6AC;
+  --color-brand-tint: #132E2F;
+  --color-brand-focus: rgba(38, 166, 154, 0.35);
+
+  /* Risk Tier Colors & Tints (WCAG AA >= 4.5:1) */
+  --color-tier-lower-text: #4ADE80;
+  --color-tier-lower-bg: #0F2D1E;
+  --color-tier-lower-border: #1B5E3A;
+
+  --color-tier-moderate-text: #FBBF24;
+  --color-tier-moderate-bg: #2E2005;
+  --color-tier-moderate-border: #6B4E0A;
+
+  --color-tier-higher-text: #F87171;
+  --color-tier-higher-bg: #321212;
+  --color-tier-higher-border: #7F1D1D;
+
+  /* Layered Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-elevated: 0 12px 28px -4px rgba(0, 0, 0, 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-page: #0D1117;
+    --color-surface: #161B22;
+    --color-surface-subtle: #21262D;
+    --color-ink: #F0F6FC;
+    --color-muted: #8B949E;
+    --color-border: #30363D;
+    --color-border-hover: #484F58;
+
+    --color-brand: #26A69A;
+    --color-brand-hover: #4DB6AC;
+    --color-brand-tint: #132E2F;
+    --color-brand-focus: rgba(38, 166, 154, 0.35);
+
+    --color-tier-lower-text: #4ADE80;
+    --color-tier-lower-bg: #0F2D1E;
+    --color-tier-lower-border: #1B5E3A;
+
+    --color-tier-moderate-text: #FBBF24;
+    --color-tier-moderate-bg: #2E2005;
+    --color-tier-moderate-border: #6B4E0A;
+
+    --color-tier-higher-text: #F87171;
+    --color-tier-higher-bg: #321212;
+    --color-tier-higher-border: #7F1D1D;
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.5);
+    --shadow-elevated: 0 12px 28px -4px rgba(0, 0, 0, 0.6);
+  }
+}
+
