@@ -12,7 +12,7 @@
 * **Project Title:** Early Heart Disease Risk Prediction using Explainable Machine Learning
 * **Core Concepts:** Supervised Classification, Random Forest Classifier, SHAP (SHapley Additive exPlanations)
 * **Academic Context:** Data Science Working-Model Project, B.Tech CSE (Machine Learning and Data Science), Amity University Madhya Pradesh (AUMP)
-* **Submission Deadline:** 16 November 2026
+* **Submission Deadline:** 19 November 2026
 
 Cardiovascular diseases (CVDs) remain the leading cause of mortality worldwide. Early detection can save lives, but conventional "black-box" machine learning models often fail to gain clinician trust. This project builds a complete, reproducible clinical risk prediction pipeline using Random Forest classification paired with SHAP explainability. Every prediction is paired with intuitive local feature attribution—showing exactly which clinical indicators increased or decreased an individual patient's cardiovascular risk.
 
