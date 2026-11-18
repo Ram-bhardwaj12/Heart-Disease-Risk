@@ -9,6 +9,22 @@ import { COPY } from "../copy.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+const FRIENDLY_HELP = {
+  age: "Your age in years.",
+  sex: "Biological sex recorded in your medical report.",
+  trestbps: "The top number of a blood pressure reading taken while resting (mm Hg).",
+  chol: "Total cholesterol measured from a routine blood test (mg/dl).",
+  fbs: "Whether fasting blood sugar is above 120 mg/dl.",
+  cp: "Type of chest pain or discomfort, if any.",
+  restecg: "Results from a resting electrocardiogram (ECG) heart tracing.",
+  thalach: "Highest heart rate reached during an exercise stress test (bpm).",
+  exang: "Whether physical exercise brought on chest discomfort.",
+  oldpeak: "ST segment depression measured during an exercise stress test (mm).",
+  slope: "Direction of the ST segment slope at peak exercise.",
+  ca: "Number of major blood vessels (0 to 3) visible on a fluoroscopy scan.",
+  thal: "Blood flow evaluation from a thallium stress test.",
+};
+
 export function createField(spec, initialValue, onChange, inferredNote = "") {
   const wrapper = document.createElement("div");
   wrapper.className = "field-wrapper";
@@ -46,10 +62,11 @@ export function createField(spec, initialValue, onChange, inferredNote = "") {
   }
 
   // 2. Help text
-  if (spec.help) {
+  const helperText = spec.help || FRIENDLY_HELP[spec.key] || "";
+  if (helperText) {
     const help = document.createElement("p");
     help.className = "field-help field-help-text";
-    help.textContent = spec.help;
+    help.textContent = helperText;
     wrapper.appendChild(help);
   }
 

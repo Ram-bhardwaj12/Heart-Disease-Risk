@@ -22,10 +22,15 @@ export const COPY = {
 
   hero: {
     headline: "Check your heart risk",
-    sentence1: "Answer questions about your health and test results.",
-    sentence2: "See which answers shaped your score.",
-    startBtn: "Start the check",
+    quickLine: "Answer 13 quick questions. Takes about 2 minutes. No sign-up. Nothing is saved.",
+    threeSteps: [
+      "1. Answer questions",
+      "2. See your risk level",
+      "3. See what to change",
+    ],
+    startBtn: "Check my heart risk",
     howLink: "How it works",
+    disclaimerNote: "Educational tool, not a medical diagnosis.",
   },
 
   examples: {
@@ -41,7 +46,7 @@ export const COPY = {
     back: "Back",
     next: "Next",
     submit: "See my result",
-    skipCheckbox: "I don't have this value",
+    skipCheckbox: "I don't know / skip",
   },
 
   results: {
@@ -77,7 +82,7 @@ export const COPY = {
   },
 
   errors: {
-    required: "This field is required.",
+    required: "Please answer this question to continue.",
     invalidNumber: "Please enter a valid number.",
     networkError: "Unable to reach the server. Please check your connection and try again.",
     retryBtn: "Retry",

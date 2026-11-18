@@ -91,7 +91,7 @@ export function createStepperHeader(currentStep = 1, totalSteps = 3) {
   const currentObj = STEP_LABELS.find((s) => s.step === currentStep) || STEP_LABELS[0];
   const stepHeading = document.createElement("h3");
   stepHeading.className = "stepper-heading";
-  stepHeading.textContent = currentObj.label;
+  stepHeading.textContent = `Step ${currentStep} of ${totalSteps}: ${currentObj.label}`;
   wrapper.appendChild(stepHeading);
 
   return wrapper;

@@ -34,6 +34,8 @@ BANNED_WORDS = [
 ALLOWED_EXCEPTIONS = [
     "this is the model's score, not a measured probability.",
     "educational project, not a medical diagnosis. do not use this tool to make health decisions.",
+    "educational tool, not a medical diagnosis.",
+    "educational tool, not a medical diagnosis",
     "it gives a score, not a diagnosis",
 ]
 

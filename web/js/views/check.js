@@ -69,24 +69,38 @@ function createHeroSection(state, onSelectExample) {
   const content = document.createElement("div");
   content.className = "hero-content";
 
+  // Educational disclaimer badge
+  const noteBadge = document.createElement("div");
+  noteBadge.className = "hero-disclaimer-note";
+  noteBadge.textContent = COPY.hero.disclaimerNote;
+  content.appendChild(noteBadge);
+
   const headline = document.createElement("h1");
   headline.textContent = COPY.hero.headline;
   content.appendChild(headline);
 
-  const s1 = document.createElement("p");
-  s1.textContent = COPY.hero.sentence1;
-  content.appendChild(s1);
+  const quickLine = document.createElement("p");
+  quickLine.className = "hero-quick-line";
+  quickLine.textContent = COPY.hero.quickLine;
+  content.appendChild(quickLine);
 
-  const s2 = document.createElement("p");
-  s2.textContent = COPY.hero.sentence2;
-  content.appendChild(s2);
+  // 3 Short Steps
+  const stepsList = document.createElement("div");
+  stepsList.className = "hero-steps-pills";
+  COPY.hero.threeSteps.forEach((stepText) => {
+    const pill = document.createElement("span");
+    pill.className = "hero-step-pill";
+    pill.textContent = stepText;
+    stepsList.appendChild(pill);
+  });
+  content.appendChild(stepsList);
 
   const actions = document.createElement("div");
   actions.className = "hero-actions";
 
   const startBtn = document.createElement("button");
   startBtn.type = "button";
-  startBtn.className = "btn btn-primary";
+  startBtn.className = "btn btn-primary btn-large btn-hero-start";
   startBtn.id = "btn-start-check";
   startBtn.textContent = COPY.hero.startBtn;
   startBtn.addEventListener("click", () => {
@@ -94,7 +108,7 @@ function createHeroSection(state, onSelectExample) {
     if (formCard) {
       const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       formCard.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth" });
-      const firstInput = formCard.querySelector("input, select, button");
+      const firstInput = formCard.querySelector("input:not([type='checkbox']), select, button");
       if (firstInput) {
         firstInput.focus();
       }
@@ -103,7 +117,7 @@ function createHeroSection(state, onSelectExample) {
   actions.appendChild(startBtn);
 
   const howLink = document.createElement("a");
-  howLink.className = "btn btn-secondary";
+  howLink.className = "btn btn-secondary btn-large";
   howLink.setAttribute("href", "#/how");
   howLink.textContent = COPY.hero.howLink;
   actions.appendChild(howLink);
@@ -250,7 +264,7 @@ function renderFormStep(formCard, root, stepNumber) {
   if (stepNumber > 1) {
     const backBtn = document.createElement("button");
     backBtn.type = "button";
-    backBtn.className = "btn btn-secondary";
+    backBtn.className = "btn btn-secondary btn-large";
     backBtn.textContent = COPY.stepper.back;
     backBtn.id = "btn-wizard-back";
     backBtn.addEventListener("click", () => {
@@ -262,7 +276,7 @@ function renderFormStep(formCard, root, stepNumber) {
   if (stepNumber < 3) {
     const nextBtn = document.createElement("button");
     nextBtn.type = "button";
-    nextBtn.className = "btn btn-primary";
+    nextBtn.className = "btn btn-primary btn-large";
     nextBtn.textContent = COPY.stepper.next;
     nextBtn.id = "btn-wizard-next";
     nextBtn.addEventListener("click", () => {
@@ -274,7 +288,7 @@ function renderFormStep(formCard, root, stepNumber) {
   } else {
     const submitBtn = document.createElement("button");
     submitBtn.type = "button";
-    submitBtn.className = "btn btn-primary";
+    submitBtn.className = "btn btn-primary btn-large";
     submitBtn.textContent = COPY.stepper.submit;
     submitBtn.id = "btn-wizard-submit";
     submitBtn.addEventListener("click", () => {
@@ -292,6 +306,7 @@ function validateStep(stepNumber, schema) {
   const state = getState();
   const keys = STEP_FIELD_KEYS[stepNumber] || [];
   let allValid = true;
+  let firstInvalidKey = null;
 
   keys.forEach((key) => {
     clearFieldError(key);
@@ -305,6 +320,7 @@ function validateStep(stepNumber, schema) {
 
     if (val === null || val === undefined || val === "") {
       setFieldError(key, COPY.errors.required);
+      if (!firstInvalidKey) firstInvalidKey = key;
       allValid = false;
       return;
     }
@@ -312,6 +328,7 @@ function validateStep(stepNumber, schema) {
     const num = Number(val);
     if (isNaN(num)) {
       setFieldError(key, COPY.errors.invalidNumber);
+      if (!firstInvalidKey) firstInvalidKey = key;
       allValid = false;
       return;
     }
@@ -322,6 +339,7 @@ function validateStep(stepNumber, schema) {
       } else {
         setFieldError(key, `Value must be at least ${spec.min}.`);
       }
+      if (!firstInvalidKey) firstInvalidKey = key;
       allValid = false;
     } else if (spec.max !== null && num > spec.max) {
       if (key === "age") {
@@ -329,9 +347,18 @@ function validateStep(stepNumber, schema) {
       } else {
         setFieldError(key, `Value must be at most ${spec.max}.`);
       }
+      if (!firstInvalidKey) firstInvalidKey = key;
       allValid = false;
     }
   });
+
+  if (!allValid && firstInvalidKey) {
+    const invalidInput = document.getElementById(`field-input-${firstInvalidKey}`);
+    if (invalidInput) {
+      invalidInput.scrollIntoView({ behavior: "smooth", block: "center" });
+      invalidInput.focus();
+    }
+  }
 
   return allValid;
 }
