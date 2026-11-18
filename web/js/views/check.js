@@ -461,12 +461,50 @@ function renderResultView(container, root, data, originalInputs) {
   container.replaceChildren();
   const state = getState();
   const schema = state.schema;
+  const tierKey = (data.tier && data.tier.key) || "lower";
+  const tierLabel = (data.tier && data.tier.label) || "Lower";
 
-  // Action Buttons Bar: Edit answers & Start over
+  // Top Action Buttons Bar: Start a new check, Print, Edit answers
   const topActions = document.createElement("div");
   topActions.className = "flex";
-  topActions.style.setProperty("justify-content", "flex-end");
-  topActions.style.setProperty("margin-bottom", "var(--space-2)");
+  topActions.style.setProperty("justify-content", "space-between");
+  topActions.style.setProperty("align-items", "center");
+  topActions.style.setProperty("flex-wrap", "wrap");
+  topActions.style.setProperty("gap", "var(--space-2)");
+  topActions.style.setProperty("margin-bottom", "var(--space-3)");
+
+  const leftBtns = document.createElement("div");
+  leftBtns.className = "flex";
+  leftBtns.style.setProperty("gap", "var(--space-2)");
+
+  const startOverBtn = document.createElement("button");
+  startOverBtn.type = "button";
+  startOverBtn.className = "btn btn-primary";
+  startOverBtn.textContent = COPY.results.startOver;
+  startOverBtn.id = "btn-start-over";
+  startOverBtn.addEventListener("click", () => {
+    resetInputs();
+    container.style.setProperty("display", "none");
+    const formCard = document.getElementById("assessment-form-card");
+    if (formCard) {
+      formCard.style.setProperty("display", "block");
+      renderFormStep(formCard, root, 1);
+    }
+    const hero = document.getElementById("hero-overview-section");
+    if (hero) hero.scrollIntoView({ behavior: "smooth" });
+  });
+  leftBtns.appendChild(startOverBtn);
+
+  const printBtn = document.createElement("button");
+  printBtn.type = "button";
+  printBtn.className = "btn btn-secondary";
+  printBtn.id = "btn-print-summary";
+  printBtn.textContent = COPY.results.printBtn;
+  printBtn.addEventListener("click", () => {
+    window.print();
+  });
+  leftBtns.appendChild(printBtn);
+  topActions.appendChild(leftBtns);
 
   const editBtn = document.createElement("button");
   editBtn.type = "button";
@@ -484,23 +522,6 @@ function renderResultView(container, root, data, originalInputs) {
   });
   topActions.appendChild(editBtn);
 
-  const startOverBtn = document.createElement("button");
-  startOverBtn.type = "button";
-  startOverBtn.className = "btn btn-secondary";
-  startOverBtn.textContent = COPY.results.startOver;
-  startOverBtn.id = "btn-start-over";
-  startOverBtn.addEventListener("click", () => {
-    resetInputs();
-    container.style.setProperty("display", "none");
-    const formCard = document.getElementById("assessment-form-card");
-    if (formCard) {
-      formCard.style.setProperty("display", "block");
-      renderFormStep(formCard, root, 1);
-    }
-    const hero = document.getElementById("hero-overview-section");
-    if (hero) hero.scrollIntoView({ behavior: "smooth" });
-  });
-  topActions.appendChild(startOverBtn);
   container.appendChild(topActions);
 
   // A. Notice Card if warnings or missing_used present
@@ -509,11 +530,16 @@ function renderResultView(container, root, data, originalInputs) {
     container.appendChild(noticeCard);
   }
 
-  // B. Score Card
+  // B. Main Score Card (Big Headline, Colored Ring, Sentence of Meaning)
   const scoreCard = document.createElement("div");
   scoreCard.className = "card score-card";
 
-  const tierKey = (data.tier && data.tier.key) || "lower";
+  const mainHeadline = document.createElement("h2");
+  mainHeadline.className = "report-main-headline";
+  mainHeadline.id = "result-report-headline";
+  mainHeadline.textContent = `Your estimated risk is ${tierLabel} (${data.score_percent}%)`;
+  scoreCard.appendChild(mainHeadline);
+
   const scoreRing = createScoreRing(data.score_percent, tierKey);
   scoreCard.appendChild(scoreRing);
 
@@ -526,11 +552,11 @@ function renderResultView(container, root, data, originalInputs) {
   tierPill.appendChild(pillSvg);
 
   const pillLabel = document.createElement("span");
-  pillLabel.textContent = (data.tier && data.tier.label) || "Lower";
+  pillLabel.textContent = tierLabel;
   tierPill.appendChild(pillLabel);
   scoreCard.appendChild(tierPill);
 
-  // Tier Text from API
+  // Tier Text from API (Sentence of Meaning)
   const tierTextP = document.createElement("p");
   tierTextP.className = "tier-text";
   tierTextP.textContent = (data.tier && data.tier.text) || "";
@@ -549,39 +575,38 @@ function renderResultView(container, root, data, originalInputs) {
 
   container.appendChild(scoreCard);
 
-  // C. What Shaped This Score (Horizontal Factor Bars)
-  const factorsCard = document.createElement("div");
-  factorsCard.className = "card";
-  factorsCard.style.setProperty("margin-top", "var(--space-3)");
-  const factorBars = createFactorBars(data.top_raising, data.top_lowering, data.contributions);
-  factorsCard.appendChild(factorBars);
-  container.appendChild(factorsCard);
+  // C. Section: What Affected Your Result Most
+  const affectedCard = createAffectedFactorsSection(data);
+  container.appendChild(affectedCard);
 
-  // D. Try a Change (Closed <details> What-If Scenario)
+  // D. Section: What You Can Discuss With a Doctor
+  const discussCard = createDoctorDiscussionSection(tierKey);
+  container.appendChild(discussCard);
+
+  // E. What if I change something? (What-If Scenario)
   const whatIfCard = createWhatIfSection(originalInputs, data.score_percent, data.cutoffs, schema);
   container.appendChild(whatIfCard);
 
-  // E. Your Summary (Printable Card)
-  const summaryCard = createPrintableSummaryCard(data, originalInputs, schema);
-  container.appendChild(summaryCard);
+  // F. Collapsed "See details" section
+  const detailsCard = createTechnicalDetailsSection(data, originalInputs, schema);
+  container.appendChild(detailsCard);
 
-  // F. What to Do Next (3 Neutral Sentences)
-  const nextCard = document.createElement("div");
-  nextCard.className = "card";
-  nextCard.style.setProperty("margin-top", "var(--space-3)");
+  // G. Educational Disclaimer (Always visible on report)
+  const disclaimerCard = document.createElement("div");
+  disclaimerCard.className = "card report-disclaimer-card";
+  disclaimerCard.style.setProperty("margin-top", "var(--space-3)");
 
-  const nextHeading = document.createElement("h3");
-  nextHeading.textContent = COPY.results.whatNextHeading;
-  nextHeading.style.setProperty("margin-bottom", "var(--space-1)");
-  nextCard.appendChild(nextHeading);
+  const discTitle = document.createElement("p");
+  discTitle.className = "field-label";
+  discTitle.textContent = "Educational tool, not a medical diagnosis.";
+  disclaimerCard.appendChild(discTitle);
 
-  COPY.results.whatNextSentences.forEach((sentence) => {
-    const p = document.createElement("p");
-    p.textContent = sentence;
-    p.style.setProperty("margin-bottom", "var(--space-1)");
-    nextCard.appendChild(p);
-  });
-  container.appendChild(nextCard);
+  const discBody = document.createElement("p");
+  discBody.className = "text-muted";
+  discBody.textContent = data.disclaimer || "This tool is an educational project, not a medical diagnosis. Do not use this tool to make health decisions. Always seek advice from a qualified healthcare professional.";
+  disclaimerCard.appendChild(discBody);
+
+  container.appendChild(disclaimerCard);
 }
 
 function createTierIconSvg(tierKey) {
@@ -623,12 +648,202 @@ function createTierIconSvg(tierKey) {
 }
 
 // -----------------------------------------------------------------------------
+// Section: What Affected Your Result Most (Simple Plain-Language Factors)
+// -----------------------------------------------------------------------------
+
+function createAffectedFactorsSection(data) {
+  const card = document.createElement("div");
+  card.className = "card affected-factors-card";
+  card.style.setProperty("margin-top", "var(--space-3)");
+
+  const heading = document.createElement("h3");
+  heading.className = "affected-factors-heading";
+  heading.textContent = COPY.results.affectedHeading;
+  card.appendChild(heading);
+
+  const subhead = document.createElement("p");
+  subhead.className = "text-muted";
+  subhead.style.setProperty("margin-bottom", "var(--space-2)");
+  subhead.textContent = "Here are the top factors from your answers that influenced this estimate.";
+  card.appendChild(subhead);
+
+  const topRaising = (data.top_raising || []).slice(0, 3);
+  const topLowering = (data.top_lowering || []).slice(0, 3);
+
+  if (topRaising.length === 0 && topLowering.length === 0) {
+    const emptyNotice = document.createElement("p");
+    emptyNotice.className = "text-muted";
+    emptyNotice.textContent = "Your answers are close to average values and did not strongly push the score up or down.";
+    card.appendChild(emptyNotice);
+    return card;
+  }
+
+  const list = document.createElement("div");
+  list.className = "affected-factors-list";
+
+  // Top raising factors
+  topRaising.forEach((factor) => {
+    list.appendChild(renderSimpleFactorRow(factor, "raised"));
+  });
+
+  // Top lowering factors
+  topLowering.forEach((factor) => {
+    list.appendChild(renderSimpleFactorRow(factor, "lowered"));
+  });
+
+  card.appendChild(list);
+  return card;
+}
+
+function renderSimpleFactorRow(factor, direction) {
+  const row = document.createElement("div");
+  row.className = `affected-factor-row factor-${direction}`;
+
+  const iconWrap = document.createElement("div");
+  iconWrap.className = `factor-icon-wrap icon-${direction}`;
+  iconWrap.appendChild(createArrowIconSvg(direction));
+  row.appendChild(iconWrap);
+
+  const contentWrap = document.createElement("div");
+  contentWrap.className = "factor-content-wrap";
+
+  const titleRow = document.createElement("div");
+  titleRow.className = "factor-title-row";
+
+  const titleSpan = document.createElement("span");
+  titleSpan.className = "factor-title";
+  titleSpan.textContent = factor.short_label || factor.label;
+  titleRow.appendChild(titleSpan);
+
+  const valSpan = document.createElement("span");
+  valSpan.className = "factor-val-badge";
+  valSpan.textContent = factor.value_display;
+  titleRow.appendChild(valSpan);
+
+  contentWrap.appendChild(titleRow);
+
+  const noteSpan = document.createElement("span");
+  noteSpan.className = "factor-dir-badge";
+  noteSpan.textContent = direction === "raised" ? "Raised your score" : "Lowered your score";
+  contentWrap.appendChild(noteSpan);
+
+  row.appendChild(contentWrap);
+  return row;
+}
+
+function createArrowIconSvg(direction) {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("width", "18");
+  svg.setAttribute("height", "18");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2.5");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+
+  if (direction === "raised") {
+    // Arrow pointing up
+    const line = document.createElementNS(SVG_NS, "line");
+    line.setAttribute("x1", "12");
+    line.setAttribute("y1", "19");
+    line.setAttribute("x2", "12");
+    line.setAttribute("y2", "5");
+    svg.appendChild(line);
+    const poly = document.createElementNS(SVG_NS, "polyline");
+    poly.setAttribute("points", "5 12 12 5 19 12");
+    svg.appendChild(poly);
+  } else {
+    // Arrow pointing down
+    const line = document.createElementNS(SVG_NS, "line");
+    line.setAttribute("x1", "12");
+    line.setAttribute("y1", "5");
+    line.setAttribute("x2", "12");
+    line.setAttribute("y2", "19");
+    svg.appendChild(line);
+    const poly = document.createElementNS(SVG_NS, "polyline");
+    poly.setAttribute("points", "19 12 12 19 5 12");
+    svg.appendChild(poly);
+  }
+
+  return svg;
+}
+
+// -----------------------------------------------------------------------------
+// Section: What You Can Discuss With a Doctor
+// -----------------------------------------------------------------------------
+
+function createDoctorDiscussionSection(tierKey) {
+  const card = document.createElement("div");
+  card.className = "card doctor-discuss-card";
+  card.style.setProperty("margin-top", "var(--space-3)");
+
+  const heading = document.createElement("h3");
+  heading.className = "doctor-discuss-heading";
+  heading.textContent = COPY.results.discussHeading;
+  card.appendChild(heading);
+
+  const intro = document.createElement("p");
+  intro.className = "text-muted";
+  intro.style.setProperty("margin-bottom", "var(--space-2)");
+  intro.textContent = "Here are generic, safe points you can discuss with your healthcare provider:";
+  card.appendChild(intro);
+
+  const suggestions = (COPY.results.discussSuggestions && COPY.results.discussSuggestions[tierKey]) ||
+                      (COPY.results.discussSuggestions && COPY.results.discussSuggestions.lower) || [];
+
+  const ul = document.createElement("ul");
+  ul.className = "doctor-suggestions-list";
+
+  suggestions.forEach((text) => {
+    const li = document.createElement("li");
+    li.className = "doctor-suggestion-item";
+    li.textContent = text;
+    ul.appendChild(li);
+  });
+
+  card.appendChild(ul);
+  return card;
+}
+
+// -----------------------------------------------------------------------------
+// Section: Collapsed Technical Details
+// -----------------------------------------------------------------------------
+
+function createTechnicalDetailsSection(data, originalInputs, schema) {
+  const details = document.createElement("details");
+  details.className = "card see-details-card";
+  details.style.setProperty("margin-top", "var(--space-3)");
+
+  const summary = document.createElement("summary");
+  summary.className = "see-details-summary";
+  summary.textContent = COPY.results.seeDetails;
+  details.appendChild(summary);
+
+  const innerWrap = document.createElement("div");
+  innerWrap.className = "see-details-content";
+  innerWrap.style.setProperty("margin-top", "var(--space-3)");
+
+  // Technical factor impact bars
+  const factorBars = createFactorBars(data.top_raising, data.top_lowering, data.contributions);
+  innerWrap.appendChild(factorBars);
+
+  // Full summary breakdown card
+  const summaryCard = createPrintableSummaryCard(data, originalInputs, schema);
+  innerWrap.appendChild(summaryCard);
+
+  details.appendChild(innerWrap);
+  return details;
+}
+
+// -----------------------------------------------------------------------------
 // Interactive What-If Section
 // -----------------------------------------------------------------------------
 
 function createWhatIfSection(inputs, baselineScorePercent, cutoffs, schema) {
   const details = document.createElement("details");
-  details.className = "card form-card";
+  details.className = "card form-card whatif-container";
   details.style.setProperty("margin-top", "var(--space-3)");
 
   const summary = document.createElement("summary");
@@ -865,7 +1080,7 @@ function createPrintableSummaryCard(data, inputs, schema) {
   const printBtn = document.createElement("button");
   printBtn.type = "button";
   printBtn.className = "btn btn-primary";
-  printBtn.id = "btn-print-summary";
+  printBtn.id = "btn-print-summary-card";
   printBtn.textContent = COPY.results.printBtn;
   printBtn.addEventListener("click", () => {
     window.print();
