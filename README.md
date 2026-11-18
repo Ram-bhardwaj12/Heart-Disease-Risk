@@ -90,9 +90,10 @@ The project utilizes the widely studied **Kaggle Heart Disease Dataset** (derive
 * **matplotlib:** Foundational plotting library for formatting and rendering diagnostic visual evaluations.
 * **seaborn:** Statistical data visualization library for correlation heatmaps and feature distributions.
 * **joblib:** Serialization engine for persistent storage and rapid reloading of trained model artifacts and preprocessing scalers.
-* **Streamlit:** Python-native framework for rapid development of interactive, clinician-friendly web applications.
+* **FastAPI:** High-performance asynchronous Python web framework powering the REST API backend.
+* **Streamlit:** Python-native framework used for the legacy diagnostic interface (retained as an optional fallback).
 * **GitHub:** Version control repository hosting project code, documentation, and revision tracking.
-* **Streamlit Community Cloud:** Managed cloud hosting environment enabling continuous public web app accessibility directly from GitHub.
+* **Render:** Cloud hosting platform enabling continuous public deployment of the FastAPI web application directly from GitHub.
 * **Antigravity:** AI coding assistant utilized prompt-by-prompt across planning, code generation, debugging, and documentation stages.
 
 ---
@@ -106,7 +107,7 @@ The project executes through eight sequential, modular phases:
                                                                         ⬇
 [Phase 6: SHAP Explainability] ⬅ [Phase 5: Evaluation] ⬅ [Phase 4: Model Training]
              ⬇
-[Phase 7: Streamlit App]  [Phase 8: Cloud Deployment]
+[Phase 7: FastAPI & Web App]  [Phase 8: Render Deployment]
 ```
 
 1. **Phase 1: Data Loading, Validation, and Deduplication**
@@ -139,15 +140,15 @@ The project executes through eight sequential, modular phases:
    * **Input:** `models/best_random_forest.joblib`, `data/processed/X_test.csv`
    * **Output Files:** `models/shap_explainer.joblib`, `reports/figures/shap_summary_plot.png`, `reports/figures/shap_bar_plot.png`
 
-7. **Phase 7: Streamlit Application Development**
-   * **Goal:** Build a modular, interactive user interface supporting single-patient inference, risk tier classification, and dynamic local SHAP waterfall diagrams.
+7. **Phase 7: FastAPI Backend & Web Application Development**
+   * **Goal:** Build a modular, interactive user interface supporting single-patient inference, risk tier classification, and dynamic local SHAP explanations powered by a pure engine and FastAPI.
    * **Input:** `models/best_random_forest.joblib`, `models/preprocessor.joblib`, `models/shap_explainer.joblib`
-   * **Output Files:** `app/app.py`, `app/utils.py`, `app/components.py`
+   * **Output Files:** `engine/core.py`, `api/main.py`, `web/`
 
-8. **Phase 8: Production Deployment**
-   * **Goal:** Connect GitHub repository with Streamlit Community Cloud and verify end-to-end cloud accessibility.
-   * **Input:** GitHub Repository (`main` branch), `requirements.txt`
-   * **Output Files:** Production URL, `reports/deployment_checklist.md`
+8. **Phase 8: Production Deployment on Render**
+   * **Goal:** Connect GitHub repository with Render and verify end-to-end cloud accessibility.
+   * **Input:** GitHub Repository (`main` branch), `requirements-api.txt`, `render.yaml`
+   * **Output Files:** Production URL, `DEPLOYMENT.md`
 
 ---
 
@@ -218,13 +219,13 @@ gantt
     G - SHAP explainability analysis             :crit, 2026-11-09, 2d
 
     section Application
-    H - Streamlit app development                :crit, 2026-11-11, 2d
-    I - Deployment on Streamlit Community Cloud  :crit, 2026-11-13, 1d
+    H - FastAPI backend and web app development  :crit, 2026-11-11, 2d
+    I - Deployment on Render                     :crit, 2026-11-13, 1d
 
     section Finalization
-    J - Testing and bug fixes                    :crit, 2026-11-13, 2d
-    K - Report and PPT                           :2026-11-11, 5d
-    L - Buffer day                               :crit, milestone, 2026-11-16, 0d
+    J - Testing and bug fixes                    :crit, 2026-11-14, 4d
+    K - Report and PPT                           :2026-11-13, 5d
+    L - Buffer day                               :crit, milestone, 2026-11-19, 0d
 ```
 
 ---
@@ -246,8 +247,8 @@ $$\mu = T_E = \frac{O + 4M + P}{6}, \quad \sigma^2 = \left(\frac{P - O}{6}\right
 | **E** | Baseline & Random Forest training with tuning | C, D | 1.0 | 1.5 | 2.0 | **1.50** | $\frac{1}{36} \approx 0.0278$ |
 | **F** | Model evaluation | E | 0.5 | 1.0 | 1.5 | **1.00** | $\frac{1}{36} \approx 0.0278$ |
 | **G** | SHAP explainability analysis | F | 1.0 | 1.5 | 2.0 | **1.50** | $\frac{1}{36} \approx 0.0278$ |
-| **H** | Streamlit app development | G | 1.0 | 2.0 | 3.0 | **2.00** | $\frac{4}{36} \approx 0.1111$ |
-| **I** | Deployment on Streamlit Community Cloud | H | 0.5 | 1.0 | 1.5 | **1.00** | $\frac{1}{36} \approx 0.0278$ |
+| **H** | FastAPI backend and web app development | G | 1.0 | 2.0 | 3.0 | **2.00** | $\frac{4}{36} \approx 0.1111$ |
+| **I** | Deployment on Render | H | 0.5 | 1.0 | 1.5 | **1.00** | $\frac{1}{36} \approx 0.0278$ |
 | **J** | Testing and bug fixes | I | 1.0 | 1.5 | 2.0 | **1.50** | $\frac{1}{36} \approx 0.0278$ |
 | **K** | Report and presentation preparation | G | 1.0 | 2.0 | 3.0 | **2.00** | $\frac{4}{36} \approx 0.1111$ |
 | **L** | Final review & buffer day | J, K | 1.0 | 1.0 | 1.0 | **1.00** | $\frac{0}{36} = 0.0000$ |
@@ -268,8 +269,8 @@ flowchart LR
     E["<b>E: Model Training & Tuning</b><br>TE = 1.5d"]:::crit
     F["<b>F: Model Evaluation</b><br>TE = 1.0d"]:::crit
     G["<b>G: SHAP Analysis</b><br>TE = 1.5d"]:::crit
-    H["<b>H: Streamlit App</b><br>TE = 2.0d"]:::crit
-    I["<b>I: Deployment</b><br>TE = 1.0d"]:::crit
+    H["<b>H: FastAPI & Web App</b><br>TE = 2.0d"]:::crit
+    I["<b>I: Render Deploy</b><br>TE = 1.0d"]:::crit
     J["<b>J: Testing & Bug Fixes</b><br>TE = 1.5d"]:::crit
     K["<b>K: Report & PPT</b><br>TE = 2.0d"]:::noncrit
     L["<b>L: Buffer Day</b><br>TE = 1.0d"]:::crit
@@ -311,8 +312,8 @@ Forward and backward passes evaluate schedule float across the workflow:
 | **E** | Model training and tuning | 1.50 | 4.00 | 5.50 | 4.00 | 5.50 | **0.00** | **Yes** |
 | **F** | Model evaluation | 1.00 | 5.50 | 6.50 | 5.50 | 6.50 | **0.00** | **Yes** |
 | **G** | SHAP explainability analysis | 1.50 | 6.50 | 8.00 | 6.50 | 8.00 | **0.00** | **Yes** |
-| **H** | Streamlit app development | 2.00 | 8.00 | 10.00 | 8.00 | 10.00 | **0.00** | **Yes** |
-| **I** | Deployment on Streamlit Cloud | 1.00 | 10.00 | 11.00 | 10.00 | 11.00 | **0.00** | **Yes** |
+| **H** | FastAPI backend and web app development | 2.00 | 8.00 | 10.00 | 8.00 | 10.00 | **0.00** | **Yes** |
+| **I** | Deployment on Render | 1.00 | 10.00 | 11.00 | 10.00 | 11.00 | **0.00** | **Yes** |
 | **J** | Testing and bug fixes | 1.50 | 11.00 | 12.50 | 11.00 | 12.50 | **0.00** | **Yes** |
 | **K** | Report and PPT preparation | 2.00 | 8.00 | 10.00 | 10.50 | 12.50 | **2.50** | No |
 | **L** | Buffer day | 1.00 | 12.50 | 13.50 | 12.50 | 13.50 | **0.00** | **Yes** |
@@ -430,8 +431,8 @@ Live app URL: [to be added after deployment]
 - [x] **Phase 4:** Baseline Logistic Regression & tuned Random Forest training
 - [x] **Phase 5:** Model evaluation with recall, ROC-AUC, and confusion matrix benchmarking
 - [x] **Phase 6:** Global and local SHAP explainability visualizations
-- [x] **Phase 7:** Streamlit interactive dashboard development and validation
-- [ ] **Phase 8:** Streamlit Community Cloud production deployment & documentation
+- [x] **Phase 7:** FastAPI backend and interactive web app development
+- [ ] **Phase 8:** Render production deployment & documentation
 
 ---
 
