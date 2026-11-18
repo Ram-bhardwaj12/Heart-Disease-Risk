@@ -3,7 +3,8 @@
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
 ![SHAP](https://img.shields.io/badge/SHAP-Explainability-brightgreen?style=for-the-badge)
-![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)
 
 ---
 
@@ -22,8 +23,8 @@ Cardiovascular diseases (CVDs) remain the leading cause of mortality worldwide. 
 
 | Role | Member Name & Enrollment | Assigned Responsibilities | Owns |
 | :--- | :--- | :--- | :--- |
-| **Developer** | Ram Bhardwaj, A60205224028 | End-to-end data pipeline, model training, SHAP explainability analysis, Streamlit application, and cloud deployment. | `src/`, `models/`, `data/`, later notebooks, deployment |
-| **Teammate** | `[Name, Enrollment No.]` | Works independently; contributions to be updated. | EDA notebook, `reports/`, Streamlit UI pages |
+| **Developer** | Ram Bhardwaj, A60205224028 | End-to-end data pipeline, model training, SHAP explainability analysis, FastAPI backend, web application, and cloud deployment. | `src/`, `models/`, `data/`, later notebooks, deployment |
+| **Contributor** | [codieONTOP](https://github.com/codieONTOP) | Contributing to exploratory analyses, reports, and UI verification. | EDA notebook, `reports/` |
 
 ---
 
@@ -37,7 +38,7 @@ Heart disease screening is critical for timely clinical intervention and prevent
 2. **Train Baseline and Candidate Models:** Establish a baseline with Logistic Regression and develop a hyperparameter-tuned Random Forest classifier.
 3. **Optimize with Recall-Focused Metrics:** Evaluate models prioritizing Recall (Sensitivity), ROC-AUC, and F1-score to strictly minimize false negative predictions.
 4. **Explain Predictions with SHAP:** Compute TreeSHAP values to yield both global feature importance (summary plots, feature importance rankings) and local explanations (patient-level waterfall plots).
-5. **Deploy an Interactive Streamlit App:** Build and deploy a public-facing Streamlit web app providing real-time risk stratification and patient-specific SHAP explanation plots.
+5. **Deploy an Interactive Web Application:** Build and deploy CardioLens, a public-facing FastAPI and vanilla JS web application providing real-time risk stratification and patient-specific SHAP explanation visualizations.
 
 ---
 
@@ -91,7 +92,7 @@ The project utilizes the widely studied **Kaggle Heart Disease Dataset** (derive
 * **seaborn:** Statistical data visualization library for correlation heatmaps and feature distributions.
 * **joblib:** Serialization engine for persistent storage and rapid reloading of trained model artifacts and preprocessing scalers.
 * **FastAPI:** High-performance asynchronous Python web framework powering the REST API backend.
-* **Streamlit:** Python-native framework used for the legacy diagnostic interface (retained as an optional fallback).
+* **Vanilla HTML5/CSS3/JavaScript:** Responsive single-page front end built with zero external UI frameworks or CDN dependencies.
 * **GitHub:** Version control repository hosting project code, documentation, and revision tracking.
 * **Render:** Cloud hosting platform enabling continuous public deployment of the FastAPI web application directly from GitHub.
 * **Antigravity:** AI coding assistant utilized prompt-by-prompt across planning, code generation, debugging, and documentation stages.
@@ -164,9 +165,6 @@ Key features include:
 * **Printable Clinical Summary:** Browser print media stylesheet (`web/css/print.css`) that formats patient inputs, risk tier, and key contributing factors into a clean, single-page printable report while hiding navigation bars and buttons.
 * **Model Details Page:** Transparent technical documentation across four horizontal sub-tabs: *Data* (deduplication audit and class balance), *Performance* (held-out metrics, 95% bootstrap intervals, CV benchmarks, operating-point confusion matrix), *Explanations* (top 5 grouped factors and global SHAP summary figures), and *Limitations*.
 
-### Legacy Fallback Application
-The original Streamlit application located in `app/` is maintained as a legacy fallback. It provides multi-page exploration and local inference using Streamlit's native component library.
-
 ---
 
 ## Repository Directory Structure
@@ -180,7 +178,7 @@ heart-disease-prediction/
 │   ├── js/                  # Routing, state management, UI components, and page views
 │   ├── assets/              # SVG logos and favicon
 │   └── fonts/               # Self-hosted Inter font and SIL Open Font License
-├── app/                     # Multi-page Streamlit web application (legacy fallback)
+├── app/                     # Multi-page legacy web prototype
 ├── src/                     # Production machine learning pipeline (cleaning, training, SHAP)
 ├── models/                  # Serialized scikit-learn models and training history
 ├── data/
@@ -365,10 +363,10 @@ cd heart-disease-prediction
   ```
 
 ### 3. Install Dependencies
-* **To run the Streamlit application:**
+* **To run the CardioLens web application:**
   ```bash
   pip install --upgrade pip
-  pip install -r requirements.txt
+  pip install -r requirements-api.txt
   ```
 * **To work on Jupyter notebooks and research:**
   ```bash
@@ -377,17 +375,10 @@ cd heart-disease-prediction
 
 ### 4. Launch the Web Application
 
-**Primary Application (CardioLens):**
 ```bash
 uvicorn api.main:app --port 8600
 ```
 Open your web browser and navigate to `http://localhost:8600`.
-
-**Legacy Fallback Application (Streamlit):**
-```bash
-streamlit run app/app.py
-```
-Open your web browser and navigate to `http://localhost:8501`.
 
 ### 5. Run the Automated Tests
 
@@ -416,8 +407,6 @@ For cloud deployment using the Render Blueprint:
 2. Connect the repository in Render using the Blueprint configured in `render.yaml` or as a new Web Service using `requirements-api.txt`.
 3. Set the build command to `pip install -r requirements-api.txt` and start command to `uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1`.
 4. Set environment variable `PYTHON_VERSION=3.11.9` and health check path to `/api/health`.
-
-The repository also retains the legacy Streamlit interface in `app/app.py` as an optional fallback for hosting on Streamlit Community Cloud.
 
 Live app URL: [to be added after deployment]
 

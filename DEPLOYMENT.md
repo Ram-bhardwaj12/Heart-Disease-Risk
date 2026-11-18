@@ -63,8 +63,7 @@ Perform these verification steps after deployment:
 
 ---
 
-## 5. Rollback and Fallback Plan
+## 5. Rollback Plan
 
 - **Rollback:** In the Render dashboard, navigate to **Deploys** and select a previous successful deploy, then click **Rollback to this deploy**.
-- **Streamlit Fallback:** The repository maintains the legacy Streamlit application in `app/` configured via `requirements.txt`. If needed, it can be hosted on Streamlit Community Cloud with main file `app/app.py`.
 
