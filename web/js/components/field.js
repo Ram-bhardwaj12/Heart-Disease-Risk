@@ -108,8 +108,12 @@ export function createField(spec, initialValue, onChange, inferredNote = "") {
   if (spec.type !== "choice" && spec.min !== null && spec.max !== null) {
     const hint = document.createElement("div");
     hint.className = "field-hint";
-    const unitStr = spec.unit ? ` ${spec.unit}` : "";
-    hint.textContent = `Range: ${Math.round(spec.min)} to ${Math.round(spec.max)}${unitStr}`;
+    if (spec.key === "age") {
+      hint.textContent = "Range: 18 to 100";
+    } else {
+      const unitStr = spec.unit ? ` ${spec.unit}` : "";
+      hint.textContent = `Range: ${Math.round(spec.min)} to ${Math.round(spec.max)}${unitStr}`;
+    }
     wrapper.appendChild(hint);
   }
 
@@ -119,6 +123,13 @@ export function createField(spec, initialValue, onChange, inferredNote = "") {
   errorBox.id = `field-error-${spec.key}`;
   errorBox.setAttribute("role", "alert");
   wrapper.appendChild(errorBox);
+
+  // 7. Inline warning placeholder
+  const warningBox = document.createElement("div");
+  warningBox.className = "field-warning";
+  warningBox.id = `field-warning-${spec.key}`;
+  warningBox.setAttribute("role", "status");
+  wrapper.appendChild(warningBox);
 
   return wrapper;
 }
@@ -195,14 +206,30 @@ function createNumberWithSlider(spec, initialVal, onChange) {
   slider.step = numInput.step;
   slider.value = numInput.value;
 
+  function checkWarning(val) {
+    if (spec.key === "age") {
+      const n = Number(val);
+      if (!isNaN(n) && n >= 18 && n <= 100 && (n < 29 || n > 77)) {
+        setFieldWarning(spec.key, "The model learned from patients aged 29 to 77, so this score may be less reliable.");
+      } else {
+        clearFieldWarning(spec.key);
+      }
+    }
+  }
+
+  // Initial check on next tick once DOM is attached
+  setTimeout(() => checkWarning(numInput.value), 0);
+
   // Two-way synchronization
   numInput.addEventListener("input", () => {
     slider.value = numInput.value;
+    checkWarning(numInput.value);
     onChange(spec.key, numInput.value === "" ? null : Number(numInput.value));
   });
 
   slider.addEventListener("input", () => {
     numInput.value = slider.value;
+    checkWarning(slider.value);
     onChange(spec.key, Number(slider.value));
   });
 
@@ -311,6 +338,22 @@ export function clearFieldError(key) {
   }
   if (inputEl) {
     inputEl.classList.remove("has-error");
+  }
+}
+
+export function setFieldWarning(key, message) {
+  const warnEl = document.getElementById(`field-warning-${key}`);
+  if (warnEl) {
+    warnEl.textContent = message;
+    warnEl.classList.add("visible");
+  }
+}
+
+export function clearFieldWarning(key) {
+  const warnEl = document.getElementById(`field-warning-${key}`);
+  if (warnEl) {
+    warnEl.textContent = "";
+    warnEl.classList.remove("visible");
   }
 }
 

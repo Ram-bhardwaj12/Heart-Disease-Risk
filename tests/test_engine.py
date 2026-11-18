@@ -160,14 +160,14 @@ def test_validate_inputs_rules():
     assert res_25.is_valid
     assert len(res_25.warnings) > 0
     assert any(w["field"] == "age" for w in res_25.warnings)
-    assert any("outside the range the model learned from" in w["message"] for w in res_25.warnings)
+    assert any("The model learned from patients aged 29 to 77, so this score may be less reliable." in w["message"] for w in res_25.warnings)
 
     sample_out_of_train_90 = dict(valid_sample, age=90)
     res_90 = engine.validate_inputs(sample_out_of_train_90)
     assert res_90.is_valid
     assert len(res_90.warnings) > 0
     assert any(w["field"] == "age" for w in res_90.warnings)
-    assert any("outside the range the model learned from" in w["message"] for w in res_90.warnings)
+    assert any("The model learned from patients aged 29 to 77, so this score may be less reliable." in w["message"] for w in res_90.warnings)
 
     # Accept missing ca and thal
     sample_no_ca_thal = {k: v for k, v in valid_sample.items() if k not in ["ca", "thal"]}
@@ -176,6 +176,41 @@ def test_validate_inputs_rules():
     assert set(res.missing_used) == {"ca", "thal"}
     assert np.isnan(res.cleaned_inputs["ca"])
     assert np.isnan(res.cleaned_inputs["thal"])
+
+
+def test_age_limits_acceptance_and_warnings():
+    """Verify ages 18, 25, 28, 29, 77, 100 are accepted, outside 29-77 get warning, and 17, 101 are rejected."""
+    test_df = engine.load_test_features()
+    valid_sample = test_df.iloc[0].to_dict()
+    warning_text = "The model learned from patients aged 29 to 77, so this score may be less reliable."
+
+    # Ages 18, 25, 28: accepted with soft warning
+    for age_val in [18, 25, 28]:
+        res = engine.validate_inputs(dict(valid_sample, age=age_val))
+        assert res.is_valid, f"Age {age_val} should be accepted"
+        assert any(w["field"] == "age" and warning_text in w["message"] for w in res.warnings), (
+            f"Age {age_val} must have warning: {warning_text}"
+        )
+
+    # Ages 29, 77: accepted with NO age warning (within training range)
+    for age_val in [29, 77]:
+        res = engine.validate_inputs(dict(valid_sample, age=age_val))
+        assert res.is_valid, f"Age {age_val} should be accepted"
+        age_warnings = [w for w in res.warnings if w["field"] == "age"]
+        assert len(age_warnings) == 0, f"Age {age_val} inside training range should not produce age warning"
+
+    # Age 100: accepted with soft warning
+    res_100 = engine.validate_inputs(dict(valid_sample, age=100))
+    assert res_100.is_valid, "Age 100 should be accepted"
+    assert any(w["field"] == "age" and warning_text in w["message"] for w in res_100.warnings)
+
+    # Ages 17, 101: rejected with clear error message
+    for bad_age in [17, 101]:
+        res_bad = engine.validate_inputs(dict(valid_sample, age=bad_age))
+        assert not res_bad.is_valid, f"Age {bad_age} should be rejected"
+        age_errors = [e for e in res_bad.errors if e["field"] == "age"]
+        assert len(age_errors) > 0, f"Age {bad_age} should produce an error for age"
+        assert "Enter an age between 18 and 100" in age_errors[0]["message"]
 
 
 def test_optional_ca_thal_skipped_equals_pipeline_nan():

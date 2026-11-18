@@ -56,6 +56,7 @@ export function createScoreRing(scorePercent, tierKey = "lower") {
   const numberOverlay = document.createElement("div");
   numberOverlay.className = "score-ring-number";
   numberOverlay.textContent = `${pct.toFixed(1)}%`;
+  numberOverlay.style.setProperty("white-space", "nowrap");
   container.appendChild(numberOverlay);
 
   return container;

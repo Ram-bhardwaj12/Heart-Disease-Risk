@@ -317,10 +317,18 @@ function validateStep(stepNumber, schema) {
     }
 
     if (spec.min !== null && num < spec.min) {
-      setFieldError(key, `Value must be at least ${spec.min}.`);
+      if (key === "age") {
+        setFieldError(key, `Enter an age between ${Math.round(spec.min)} and ${Math.round(spec.max)}.`);
+      } else {
+        setFieldError(key, `Value must be at least ${spec.min}.`);
+      }
       allValid = false;
     } else if (spec.max !== null && num > spec.max) {
-      setFieldError(key, `Value must be at most ${spec.max}.`);
+      if (key === "age") {
+        setFieldError(key, `Enter an age between ${Math.round(spec.min)} and ${Math.round(spec.max)}.`);
+      } else {
+        setFieldError(key, `Value must be at most ${spec.max}.`);
+      }
       allValid = false;
     }
   });
@@ -675,8 +683,8 @@ function createWhatIfSection(inputs, baselineScorePercent, cutoffs, schema) {
 
   function updateSliderParams() {
     const spec = schema && schema.field_specs ? schema.field_specs[activeFeature] : null;
-    const min = spec && spec.training_min !== undefined ? spec.training_min : (spec ? spec.min : 20);
-    const max = spec && spec.training_max !== undefined ? spec.training_max : (spec ? spec.max : 80);
+    const min = spec ? (activeFeature === "age" ? 18 : (spec.training_min !== undefined ? spec.training_min : spec.min)) : 20;
+    const max = spec ? (activeFeature === "age" ? 100 : (spec.training_max !== undefined ? spec.training_max : spec.max)) : 80;
     const step = spec && spec.step ? spec.step : (activeFeature === "oldpeak" ? 0.1 : 1);
 
     slider.min = String(min);

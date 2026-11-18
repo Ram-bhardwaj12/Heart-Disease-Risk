@@ -236,8 +236,8 @@ def get_feature_specs() -> dict[str, dict[str, Any]]:
             }
         else:
             plausible_min, plausible_max = PLAUSIBLE_LIMITS.get(col, (float(valid_series.min()), float(valid_series.max())))
-            train_min = float(valid_series.min())
-            train_max = float(valid_series.max())
+            train_min = 29.0 if col == "age" else float(valid_series.min())
+            train_max = 77.0 if col == "age" else float(valid_series.max())
             median_val = float(valid_series.median())
             step_val = meta.get("step", 1.0)
             specs[col] = {
@@ -391,14 +391,15 @@ def validate_inputs(inputs: Any) -> ValidationResult:
                     "message": msg,
                 })
             else:
-                min_train, max_train = train_ranges[col]
+                min_train = 29.0 if col == "age" else train_ranges[col][0]
+                max_train = 77.0 if col == "age" else train_ranges[col][1]
                 if val_float < min_train or val_float > max_train:
                     val_disp = int(round(val_float)) if col != "oldpeak" else f"{val_float:.1f}"
                     min_t_disp = int(round(min_train)) if col != "oldpeak" else f"{min_train:.1f}"
                     max_t_disp = int(round(max_train)) if col != "oldpeak" else f"{max_train:.1f}"
 
                     if col == "age":
-                        msg = f"An age of {val_disp} is outside the range the model learned from ({min_t_disp} to {max_t_disp}), so the score may be less reliable."
+                        msg = "The model learned from patients aged 29 to 77, so this score may be less reliable."
                     elif col == "trestbps":
                         msg = f"A resting blood pressure of {val_disp} is outside the range the model learned from ({min_t_disp} to {max_t_disp}), so the score may be less reliable."
                     elif col == "chol":

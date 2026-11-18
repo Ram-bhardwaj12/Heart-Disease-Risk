@@ -211,7 +211,7 @@ def test_predict_endpoint_optional_fields_and_warnings():
     assert set(body["missing_used"]) == {"ca", "thal"}
     assert len(body["warnings"]) > 0
     assert any(w["field"] == "age" for w in body["warnings"])
-    assert any("outside the range the model learned from" in w["message"] for w in body["warnings"])
+    assert any("The model learned from patients aged 29 to 77, so this score may be less reliable." in w["message"] for w in body["warnings"])
 
 
 def test_predict_endpoint_422_validations():
@@ -261,12 +261,50 @@ def test_predict_endpoint_422_validations():
     resp_25 = client.post("/api/predict", json={"inputs": dict(valid_sample, age=25)})
     assert resp_25.status_code == 200
     assert any(w["field"] == "age" for w in resp_25.json()["warnings"])
-    assert any("outside the range the model learned from" in w["message"] for w in resp_25.json()["warnings"])
+    assert any("The model learned from patients aged 29 to 77, so this score may be less reliable." in w["message"] for w in resp_25.json()["warnings"])
 
     resp_90 = client.post("/api/predict", json={"inputs": dict(valid_sample, age=90)})
     assert resp_90.status_code == 200
     assert any(w["field"] == "age" for w in resp_90.json()["warnings"])
-    assert any("outside the range the model learned from" in w["message"] for w in resp_90.json()["warnings"])
+    assert any("The model learned from patients aged 29 to 77, so this score may be less reliable." in w["message"] for w in resp_90.json()["warnings"])
+
+
+def test_predict_age_limits_accepted_and_rejected():
+    """Verify /api/predict accepts ages 18, 25, 28, 29, 77, 100 and rejects 17, 101."""
+    test_df = engine.load_test_features()
+    valid_sample = test_df.iloc[0].to_dict()
+    warning_text = "The model learned from patients aged 29 to 77, so this score may be less reliable."
+
+    # Ages 18, 25, 28: accepted with soft warning
+    for age_val in [18, 25, 28]:
+        resp = client.post("/api/predict", json={"inputs": dict(valid_sample, age=age_val)})
+        assert resp.status_code == 200, f"Age {age_val} should return 200"
+        body = resp.json()
+        assert any(w["field"] == "age" and warning_text in w["message"] for w in body["warnings"]), (
+            f"Age {age_val} must have warning: {warning_text}"
+        )
+
+    # Ages 29, 77: accepted with NO age warning
+    for age_val in [29, 77]:
+        resp = client.post("/api/predict", json={"inputs": dict(valid_sample, age=age_val)})
+        assert resp.status_code == 200, f"Age {age_val} should return 200"
+        body = resp.json()
+        age_warnings = [w for w in body["warnings"] if w["field"] == "age"]
+        assert len(age_warnings) == 0, f"Age {age_val} should not have age warning"
+
+    # Age 100: accepted with soft warning
+    resp_100 = client.post("/api/predict", json={"inputs": dict(valid_sample, age=100)})
+    assert resp_100.status_code == 200
+    assert any(w["field"] == "age" and warning_text in w["message"] for w in resp_100.json()["warnings"])
+
+    # Ages 17, 101: rejected with 422 and clear message
+    for bad_age in [17, 101]:
+        resp_bad = client.post("/api/predict", json={"inputs": dict(valid_sample, age=bad_age)})
+        assert resp_bad.status_code == 422, f"Age {bad_age} should return 422"
+        body_bad = resp_bad.json()
+        age_errors = [e for e in body_bad["errors"] if e["field"] == "age"]
+        assert len(age_errors) > 0, f"Age {bad_age} should produce error for age"
+        assert "Enter an age between 18 and 100" in age_errors[0]["message"]
 
 
 def test_whatif_endpoint_success_and_rejection():
