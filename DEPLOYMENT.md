@@ -14,24 +14,20 @@ This guide documents the production deployment of CardioLens to Render's free ti
 
 ---
 
-## 2. Render Deployment Steps
+## 2. Render Deployment Steps (Blueprint)
 
-1. Create or log in to your account at [Render](https://render.com/).
-2. From the dashboard, select **New +** and choose **Web Service** (or use Blueprint with `render.yaml`).
-3. Connect your GitHub repository containing the CardioLens source code.
-4. Configure service parameters:
-   - **Name:** `cardiolens`
-   - **Branch:** `main`
-   - **Region:** Select closest region to your users (e.g., Oregon, Frankfurt).
-   - **Runtime:** `Python 3`
+1. Log in to your [Render Dashboard](https://dashboard.render.com/).
+2. Click **New +** at the top right and select **Blueprint**.
+3. Connect your GitHub repository containing CardioLens.
+4. Render automatically reads `render.yaml` from the repository root and applies the service settings:
+   - **Service Name:** `cardiolens`
+   - **Runtime:** `Python`
+   - **Plan:** `Free` (512 MB RAM, 0.1 CPU)
    - **Build Command:** `pip install -r requirements-api.txt`
    - **Start Command:** `uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1`
-   - **Instance Type:** `Free` (512 MB RAM, 0.1 CPU)
-5. Environment Variables:
-   - Add variable `PYTHON_VERSION` with value `3.11.9`.
-6. Advanced Settings:
    - **Health Check Path:** `/api/health`
-7. Click **Create Web Service**. Render will initiate the build and launch the container.
+   - **Environment Variable:** `PYTHON_VERSION=3.11.9`
+5. Click **Apply**. Render creates the web service, installs pinned dependencies, and launches the container.
 
 ---
 
@@ -60,8 +56,8 @@ Perform these verification steps after deployment:
    - Test Example 1 and verify result card rendering.
    - Test Example 2 and Example 3.
 4. **Result Card & What-If Analysis:**
-   - Check risk tier pill, score ring percentage, and factor contribution bars.
-   - Expand "Try a change" and adjust the sensitivity slider across points.
+   - Check risk tier pill, score ring percentage, and plain-language factor contributions.
+   - Expand "What if I change something?" and adjust the sensitivity slider across points.
 5. **Print Preview:**
    - Open browser print dialog and confirm top navigation and print buttons are hidden while result details format cleanly.
 
