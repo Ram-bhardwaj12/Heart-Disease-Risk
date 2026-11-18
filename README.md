@@ -1,10 +1,15 @@
 # Early Heart Disease Risk Prediction using Explainable Machine Learning
 
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+![JavaScript](https://img.shields.io/badge/JavaScript-Vanilla%20ES6+-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
 ![SHAP](https://img.shields.io/badge/SHAP-Explainability-brightgreen?style=for-the-badge)
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+![Streamlit](https://img.shields.io/badge/Streamlit-Fallback-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
 ![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)
+
+> **Live Demo:** [https://cardiolens-5sxa.onrender.com](https://cardiolens-5sxa.onrender.com)  
+> *Hosted on Render free tier. If the site was idle, the first load can take up to a minute to wake up.*
 
 ---
 
@@ -12,10 +17,21 @@
 
 * **Project Title:** Early Heart Disease Risk Prediction using Explainable Machine Learning
 * **Core Concepts:** Supervised Classification, Random Forest Classifier, SHAP (SHapley Additive exPlanations)
+* **Architecture:** High-performance FastAPI backend paired with a responsive vanilla JavaScript web application (`web/`); original Streamlit application retained in `app/` as a fallback.
 * **Academic Context:** Data Science Working-Model Project, B.Tech CSE (Machine Learning and Data Science), Amity University Madhya Pradesh (AUMP)
 * **Submission Deadline:** 19 November 2026
 
 Cardiovascular diseases (CVDs) remain the leading cause of mortality worldwide. Early detection can save lives, but conventional "black-box" machine learning models often fail to gain clinician trust. This project builds a complete, reproducible clinical risk prediction pipeline using Random Forest classification paired with SHAP explainability. Every prediction is paired with intuitive local feature attribution—showing exactly which clinical indicators increased or decreased an individual patient's cardiovascular risk.
+
+### Key Features
+* **Step-by-step form:** Guided 3-step assessment wizard with real-time field validation, inline helper descriptions, and optional skip handling for unknown tests.
+* **Ages 18 to 100:** Accepts patient ages from 18 to 100, providing an empirical reliability note for ages outside the training range (29–77).
+* **Plain-language report:** Clear, compassionate risk headline and tier classification without medical jargon.
+* **SHAP explanations:** Intuitive top factors that raised or lowered estimated risk with directional visual indicators.
+* **What-if tool:** Interactive counterfactual exploration ("What if I change something?") allowing users to adjust continuous parameters with live risk updates.
+* **Dark mode:** Built-in theme toggle with system preference detection, persistent local storage, and full WCAG AA contrast compliance.
+* **Print/PDF:** Browser print media formatting patient inputs and risk summaries for doctor discussions while hiding buttons and navigation.
+* **Medical disclaimer:** Prominent and persistent disclaimer across the app reinforcing that CardioLens is an educational demonstration, not a medical diagnosis.
 
 ---
 
@@ -92,7 +108,8 @@ The project utilizes the widely studied **Kaggle Heart Disease Dataset** (derive
 * **seaborn:** Statistical data visualization library for correlation heatmaps and feature distributions.
 * **joblib:** Serialization engine for persistent storage and rapid reloading of trained model artifacts and preprocessing scalers.
 * **FastAPI:** High-performance asynchronous Python web framework powering the REST API backend.
-* **Vanilla HTML5/CSS3/JavaScript:** Responsive single-page front end built with zero external UI frameworks or CDN dependencies.
+* **Vanilla HTML5/CSS3/JavaScript:** Responsive single-page front end (`web/`) built with zero external UI frameworks or CDN dependencies.
+* **Streamlit:** Python framework hosting the original prototype interface in `app/` (retained as an optional fallback).
 * **GitHub:** Version control repository hosting project code, documentation, and revision tracking.
 * **Render:** Cloud hosting platform enabling continuous public deployment of the FastAPI web application directly from GitHub.
 * **Antigravity:** AI coding assistant utilized prompt-by-prompt across planning, code generation, debugging, and documentation stages.
@@ -178,7 +195,7 @@ heart-disease-prediction/
 │   ├── js/                  # Routing, state management, UI components, and page views
 │   ├── assets/              # SVG logos and favicon
 │   └── fonts/               # Self-hosted Inter font and SIL Open Font License
-├── app/                     # Multi-page legacy web prototype
+├── app/                     # Original Streamlit web application (fallback)
 ├── src/                     # Production machine learning pipeline (cleaning, training, SHAP)
 ├── models/                  # Serialized scikit-learn models and training history
 ├── data/
@@ -363,22 +380,25 @@ cd heart-disease-prediction
   ```
 
 ### 3. Install Dependencies
-* **To run the CardioLens web application:**
-  ```bash
-  pip install --upgrade pip
-  pip install -r requirements-api.txt
-  ```
-* **To work on Jupyter notebooks and research:**
-  ```bash
-  pip install -r requirements-dev.txt
-  ```
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
 
 ### 4. Launch the Web Application
 
+**Primary Application (CardioLens):**
 ```bash
-uvicorn api.main:app --port 8600
+python -m uvicorn api.main:app --port 8600
 ```
 Open your web browser and navigate to `http://localhost:8600`.
+
+**Fallback Application (Streamlit):**
+The original Streamlit application is retained in `app/` as an optional fallback:
+```bash
+streamlit run app/app.py
+```
+Open your web browser and navigate to `http://localhost:8501`.
 
 ### 5. Run the Automated Tests
 
@@ -408,7 +428,7 @@ For cloud deployment using the Render Blueprint:
 3. Set the build command to `pip install -r requirements-api.txt` and start command to `uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1`.
 4. Set environment variable `PYTHON_VERSION=3.11.9` and health check path to `/api/health`.
 
-Live app URL: [to be added after deployment]
+Live app URL: [https://cardiolens-5sxa.onrender.com](https://cardiolens-5sxa.onrender.com)
 
 ---
 

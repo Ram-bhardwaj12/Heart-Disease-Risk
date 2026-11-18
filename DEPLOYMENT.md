@@ -2,8 +2,8 @@
 
 This guide documents the production deployment of CardioLens to Render's free tier.
 
-- Live URL: 
-- Deployment Date: 
+- Live URL: https://cardiolens-5sxa.onrender.com
+- Deployment Date: 19 November 2026
 
 ---
 
