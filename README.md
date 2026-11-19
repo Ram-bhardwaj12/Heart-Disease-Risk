@@ -435,7 +435,7 @@ Live app URL: [https://cardiolens-5sxa.onrender.com](https://cardiolens-5sxa.onr
 ## Project Execution Checklist
 
 - [x] **Phase 1:** Data loading, schema validation, and deduplication audit
-- [ ] **Phase 2:** Exploratory data analysis & statistical correlation reporting
+- [x] **Phase 2:** Exploratory data analysis & statistical correlation reporting
 - [x] **Phase 3:** Feature encoding, scaling, and stratified train/test split
 - [x] **Phase 4:** Baseline Logistic Regression & tuned Random Forest training
 - [x] **Phase 5:** Model evaluation with recall, ROC-AUC, and confusion matrix benchmarking
