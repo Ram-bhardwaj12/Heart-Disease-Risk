@@ -426,11 +426,26 @@ def model_info_endpoint():
     figure_urls = [f"/figures/{fname}" for fname in fig_files]
 
     # Dataset facts
+    # In data_audit, target 0 was disease present (138, 45.7%) and target 1 was no disease (164, 54.3%).
+    # Map "1" to disease present and "0" to disease absent.
+    cb_audit = data_audit.get("class_balance_after") or {}
+    prep_cb = prep_summary.get("disease_class_balance", {}).get("overall", {})
+    if prep_cb and "percentages" in prep_cb and "counts" in prep_cb:
+        class_balance = {
+            "1": {"count": prep_cb["counts"].get("1", 138), "percentage": prep_cb["percentages"].get("1", 45.7)},
+            "0": {"count": prep_cb["counts"].get("0", 164), "percentage": prep_cb["percentages"].get("0", 54.3)},
+        }
+    else:
+        class_balance = {
+            "1": cb_audit.get("0", {"count": 138, "percentage": 45.7}),
+            "0": cb_audit.get("1", {"count": 164, "percentage": 54.3}),
+        }
+
     dataset_facts = {
         "raw_rows": data_audit.get("raw_rows"),
         "unique_rows": data_audit.get("unique_rows"),
         "duplicate_rows": data_audit.get("duplicate_rows"),
-        "class_balance": data_audit.get("class_balance_after"),
+        "class_balance": class_balance,
     }
 
     # Cross-validation table

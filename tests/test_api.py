@@ -351,6 +351,8 @@ def test_model_info_endpoint():
     assert "dataset_facts" in data
     assert data["dataset_facts"]["raw_rows"] == audit["raw_rows"]
     assert data["dataset_facts"]["unique_rows"] == audit["unique_rows"]
+    assert data["dataset_facts"]["class_balance"]["1"]["percentage"] == 45.7
+    assert data["dataset_facts"]["class_balance"]["1"]["count"] == 138
     assert "preprocessing" in data
     assert "invalid_codes_replaced" in data["preprocessing"]
     assert "split" in data["preprocessing"]

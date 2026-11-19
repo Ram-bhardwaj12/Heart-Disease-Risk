@@ -437,6 +437,9 @@ def test_all_widths_and_states(browser_instance: Browser, live_server: str, widt
                 page.keyboard.press("ArrowRight")
                 assert page.locator(f"#tab-{subk}").get_attribute("aria-selected") == "true"
 
+            if subk == "data":
+                assert "45.7%" in page.locator("#panel-data").text_content()
+
             verify_page_state(page, width, f"model_details_{subk}", console_errors, failed_requests)
 
             # Check that all figures on this panel have alt and naturalWidth > 0

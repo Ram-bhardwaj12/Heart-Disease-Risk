@@ -161,8 +161,8 @@ function renderDataTab(panel, modelInfo) {
     duplicate_rows: 723,
     unique_rows: 302,
     class_balance: {
-      1: { count: 164, percentage: 54.3 },
-      0: { count: 138, percentage: 45.7 },
+      1: { count: 138, percentage: 45.7 },
+      0: { count: 164, percentage: 54.3 },
     },
   };
 
@@ -175,7 +175,7 @@ function renderDataTab(panel, modelInfo) {
     { label: "Unique patients", val: String(facts.unique_rows) },
     {
       label: "Class balance (disease)",
-      val: facts.class_balance && facts.class_balance["1"] ? `${facts.class_balance["1"].percentage}%` : "54.3%",
+      val: facts.class_balance && facts.class_balance["1"] ? `${facts.class_balance["1"].percentage}%` : "45.7%",
     },
   ];
 
